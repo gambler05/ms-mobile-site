@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>__TITLE__</title>
+<meta name="description" content="Gestion commerciale pour atelier de réparation et vente de téléphonie. Fonctionne hors ligne.">
+<meta name="theme-color" content="__ACCENT__">
+<meta name="color-scheme" content="light dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="__SHORT__">
+<link rel="manifest" href="__MANIFEST__">
+<link rel="icon" type="image/png" sizes="512x512" href="__ICON512__">
+<link rel="apple-touch-icon" sizes="180x180" href="__ICON180__">
+<style>
+__STYLES__
+</style>
+</head>
+<body>
+<div id="shell">
+  <aside class="nav">
+    <div class="brand">
+      <div class="brand-logo">__INITIALS__</div>
+      <div>
+        <div class="brand-name" id="brand-name">__SHOPNAME__</div>
+        <div class="muted small">Gestion d’atelier</div>
+      </div>
+    </div>
+    <nav id="nav-links" aria-label="Navigation principale"></nav>
+  </aside>
+  <div class="main">
+    <header class="topbar" id="topbar"></header>
+    <div class="content">
+      <div id="banners" role="region" aria-label="Alertes"></div>
+      <main id="screen"></main>
+    </div>
+  </div>
+  <nav class="mobile-bar" id="mobile-bar" aria-label="Navigation"></nav>
+</div>
+<div id="modal-root"></div>
+<div id="toast-root" aria-live="polite"></div>
+<div id="print-root" hidden></div>
+<script>
+__SCRIPTS__
+</script>
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+  "id": "gare",
+  "file": "ms-mobile-gare.html",
+  "shopName": "MS MOBILE Gare",
+  "docName": "MS MOBILE",
+  "address": "3 place de la Gare, 69003 Lyon",
+  "phone": "04 78 00 33 44",
+  "email": "gare@ms-mobile.fr",
+  "siret": "812 345 678 00027",
+  "storageKey": "msmobile.gare.v1",
+  "syncDoc": "shops/gare",
+  "palette": {
+    "accent": "#7c3aed",
+    "accent2": "#c026d3",
+    "accentInk": "#ffffff"
+  },
+  "logo": ""
+}
