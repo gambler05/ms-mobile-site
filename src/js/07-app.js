@@ -192,6 +192,19 @@
     if (bannerHost) bannerHost.innerHTML = bannersHtml();
     const brand = ui.$('#brand-name');
     if (brand) brand.textContent = S(O(store.state.settings).shopName) || MS.config.shopName;
+    const brandLogo = ui.$('#brand-logo');
+    if (brandLogo) {
+      const logo = S(O(store.state.settings).logo) || S(MS.config.logo);
+      if (logo) {
+        if (brandLogo.dataset.src !== logo) {
+          brandLogo.innerHTML = '<img alt="" src="' + esc(logo) + '">';
+          brandLogo.dataset.src = logo;
+        }
+        brandLogo.classList.add('has-logo');
+      } else {
+        brandLogo.classList.remove('has-logo');
+      }
+    }
 
     const previous = ui.$('#screen');
     if (!previous) return;
@@ -227,7 +240,10 @@
   }
 
   function lockedHtml() {
-    return '<div class="card locked" id="login-card"><h2>' + ui.icon('key') + ' Connexion requise</h2>'
+    const logo = S(O(store.state.settings).logo) || S(MS.config.logo);
+    return '<div class="card locked" id="login-card">'
+      + (logo ? '<img class="login-logo" alt="" src="' + esc(logo) + '">' : '')
+      + '<h2>' + ui.icon('key') + ' Connexion requise</h2>'
       + '<form class="login-form" id="login-form">'
       + '<label class="field"><span>Identifiant</span><input name="login" autocomplete="username" data-keep="login-user" autofocus></label>'
       + '<label class="field"><span>Mot de passe</span><input name="password" type="password" autocomplete="current-password" data-keep="login-pass"></label>'

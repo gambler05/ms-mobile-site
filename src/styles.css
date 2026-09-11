@@ -9,25 +9,28 @@
   --accent-2: __ACCENT2__;
   --accent-ink: __ACCENT_INK__;
 
-  /* Sombre : la lumière vient des accents, pas du fond. */
-  --bg: #07080b;
-  --bg-2: #0b0d13;
-  --surface: rgba(19, 22, 30, .86);
-  --surface-solid: #131620;
-  --surface-2: rgba(255, 255, 255, .045);
-  --border: rgba(255, 255, 255, .07);
-  --border-strong: rgba(255, 255, 255, .14);
-  --ink: #f2f5f9;
-  --ink-2: #9aa3b5;
-  --ink-3: #6d7688;
-  --good: #10d18a;
-  --good-bg: rgba(16, 209, 138, .14);
-  --warn: #f5a524;
-  --warn-bg: rgba(245, 165, 36, .14);
-  --bad: #f87171;
-  --bad-bg: rgba(248, 113, 113, .14);
-  --info: #60a5fa;
-  --info-bg: rgba(96, 165, 250, .14);
+  /* Charte : noir, blanc, rouge. Rien d'autre.
+     Les états ne se distinguent donc pas par la teinte mais par
+     l'intensité et le remplissage : plein pour l'alerte, contour
+     pour la vigilance, neutre pour le normal. */
+  --bg: #08080a;
+  --bg-2: #0d0d10;
+  --surface: rgba(22, 22, 25, .88);
+  --surface-solid: #17171a;
+  --surface-2: rgba(255, 255, 255, .05);
+  --border: rgba(255, 255, 255, .08);
+  --border-strong: rgba(255, 255, 255, .16);
+  --ink: #f6f6f7;
+  --ink-2: #a5a5ad;
+  --ink-3: #74747e;
+  --good: #ffffff;
+  --good-bg: rgba(255, 255, 255, .10);
+  --warn: #ff6b5e;
+  --warn-bg: rgba(227, 19, 27, .14);
+  --bad: #ff3b30;
+  --bad-bg: rgba(255, 59, 48, .16);
+  --info: #dcdce0;
+  --info-bg: rgba(255, 255, 255, .08);
   --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 14px 40px rgba(0, 0, 0, .45);
   --glow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
   --radius: 16px;
@@ -40,24 +43,24 @@
 }
 
 :root[data-theme="light"] {
-  --bg: #eef1f7;
-  --bg-2: #e5e9f2;
-  --surface: rgba(255, 255, 255, .92);
+  --bg: #f1f1f3;
+  --bg-2: #e7e7ea;
+  --surface: rgba(255, 255, 255, .94);
   --surface-solid: #ffffff;
-  --surface-2: rgba(15, 23, 42, .035);
-  --border: rgba(15, 23, 42, .09);
-  --border-strong: rgba(15, 23, 42, .18);
-  --ink: #0f1420;
-  --ink-2: #4d5870;
-  --ink-3: #78849c;
-  --good: #0a8a5c;
-  --good-bg: rgba(10, 138, 92, .12);
-  --warn: #9a5b00;
-  --warn-bg: rgba(245, 165, 36, .18);
-  --bad: #c02a22;
-  --bad-bg: rgba(192, 42, 34, .1);
-  --info: #1c5fb4;
-  --info-bg: rgba(28, 95, 180, .1);
+  --surface-2: rgba(17, 17, 20, .04);
+  --border: rgba(17, 17, 20, .10);
+  --border-strong: rgba(17, 17, 20, .20);
+  --ink: #111114;
+  --ink-2: #4f4f58;
+  --ink-3: #7a7a84;
+  --good: #17171a;
+  --good-bg: rgba(17, 17, 26, .07);
+  --warn: #b3121a;
+  --warn-bg: rgba(227, 19, 27, .09);
+  --bad: #d1131b;
+  --bad-bg: rgba(227, 19, 27, .13);
+  --info: #33333d;
+  --info-bg: rgba(17, 17, 26, .06);
   --shadow: 0 1px 2px rgba(16, 24, 40, .05), 0 10px 30px rgba(16, 24, 40, .07);
 }
 
@@ -87,7 +90,7 @@ body::before {
   background:
     radial-gradient(900px 620px at 14% 4%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 60%),
     radial-gradient(780px 560px at 88% 10%, color-mix(in srgb, var(--accent-2) 11%, transparent), transparent 62%),
-    radial-gradient(900px 700px at 50% 108%, rgba(16, 209, 138, .07), transparent 60%);
+    radial-gradient(900px 700px at 50% 108%, rgba(255, 255, 255, .05), transparent 60%);
 }
 :root[data-theme="light"] body::before { opacity: .55; }
 
@@ -144,13 +147,18 @@ code, .mono { font-family: var(--mono); font-size: .92em; }
 
 .brand { display: flex; align-items: center; gap: 11px; padding: 4px 8px 18px; }
 .brand-logo {
-  width: 38px; height: 38px; border-radius: 12px; flex: none;
+  width: 38px; height: 48px; border-radius: 12px; flex: none;
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: var(--accent-ink); display: grid; place-items: center;
   font-weight: 700; font-size: .84rem; letter-spacing: -.02em;
   box-shadow: 0 6px 18px color-mix(in srgb, var(--accent) 35%, transparent);
 }
+/* Avec un logo, la tuile épouse l'image plutôt que l'inverse :
+   une hauteur en pixels est prévisible, un pourcentage ne l'est pas. */
+.brand-logo.has-logo { width: auto; height: auto; background: #fff; padding: 5px 7px; box-shadow: none; }
+.brand-logo img { height: 38px; width: auto; display: block; }
 .brand-name { font-weight: 700; font-size: .98rem; line-height: 1.2; letter-spacing: -.02em; }
+.login-logo { display: block; width: 62px; margin: 0 auto 14px; background: #fff; border-radius: 12px; padding: 5px; }
 
 .nav-group { margin-bottom: 16px; }
 .nav-section {
@@ -313,13 +321,11 @@ code, .mono { font-family: var(--mono); font-size: .92em; }
   white-space: nowrap;
 }
 .badge-good { background: var(--good-bg); color: var(--good); border-color: transparent; }
-.badge-warn { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
-.badge-bad { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+/* Vigilance : contour rouge. Alerte : rouge plein. Deux états, un seul ton. */
+.badge-warn { background: transparent; color: var(--warn); border-color: currentColor; }
+.badge-bad { background: var(--bad); color: #fff; border-color: transparent; }
 .badge-info { background: var(--info-bg); color: var(--info); border-color: transparent; }
-.badge-done {
-  background: color-mix(in srgb, var(--accent) 18%, transparent);
-  color: var(--accent); border-color: transparent;
-}
+.badge-done { background: var(--ink); color: var(--bg); border-color: transparent; }
 
 .empty { text-align: center; padding: 28px 10px; color: var(--ink-2); display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .empty .ic { width: 32px; height: 32px; opacity: .3; }

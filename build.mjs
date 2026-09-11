@@ -60,11 +60,14 @@ function hexToRgb(hex) {
   return [parseInt(full.slice(0, 2), 16) || 0, parseInt(full.slice(2, 4), 16) || 0, parseInt(full.slice(4, 6), 16) || 0];
 }
 
-/** Icône : carré arrondi en dégradé + silhouette de téléphone et clé plate. */
-function makeIcon(size, accent, accent2) {
-  const [r1, g1, b1] = hexToRgb(accent);
-  const [r2, g2, b2] = hexToRgb(accent2);
+/**
+ * Icône d'application : tuile noire, anneau rouge, clé plate blanche.
+ * Reprend la marque de la boutique, lisible jusqu'à 32 px.
+ */
+function makeIcon(size, accent) {
+  const [ar, ag, ab] = hexToRgb(accent);
   const px = Buffer.alloc(size * size * 4);
+  const c = (size - 1) / 2;
   const radius = size * 0.22;
   const inside = (x, y, x0, y0, x1, y1, r) => {
     if (x < x0 || x > x1 || y < y0 || y > y1) return false;
@@ -72,26 +75,28 @@ function makeIcon(size, accent, accent2) {
     const cy = Math.min(Math.max(y, y0 + r), y1 - r);
     return (x - cx) ** 2 + (y - cy) ** 2 <= r * r + 0.0001;
   };
-  // Téléphone centré
-  const pw = size * 0.30, ph = size * 0.50;
-  const px0 = (size - pw) / 2, py0 = (size - ph) / 2;
-  const phoneR = size * 0.045;
-  const screenPad = size * 0.035;
+
+  const ringOuter = size * 0.36, ringInner = size * 0.27;
+  const angle = -40 * Math.PI / 180;
+  const cosA = Math.cos(angle), sinA = Math.sin(angle);
+  const shaftHalf = size * 0.11, shaftR = size * 0.055;
+  const headOffset = size * 0.155, headR = size * 0.085, headThick = size * 0.042;
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const i = (y * size + x) * 4;
-      const bg = inside(x, y, 0, 0, size - 1, size - 1, radius);
-      if (!bg) { px[i + 3] = 0; continue; }
-      const t = (x + y) / (2 * size);
-      let r = Math.round(r1 + (r2 - r1) * t);
-      let g = Math.round(g1 + (g2 - g1) * t);
-      let b = Math.round(b1 + (b2 - b1) * t);
-      if (inside(x, y, px0, py0, px0 + pw, py0 + ph, phoneR)) {
+      if (!inside(x, y, 0, 0, size - 1, size - 1, radius)) { px[i + 3] = 0; continue; }
+      let r = 18, g = 18, b = 20;                       // tuile noire
+      const dx = x - c, dy = y - c;
+      const dist = Math.hypot(dx, dy);
+      if (dist <= ringOuter && dist >= ringInner) { r = ar; g = ag; b = ab; }   // anneau rouge
+      // Clé plate : manche en capsule, tête en anneau ouvert, le tout incliné.
+      const u = dx * cosA + dy * sinA;
+      const v = -dx * sinA + dy * cosA;
+      const shaft = Math.hypot(u, Math.max(0, Math.abs(v) - shaftHalf));
+      const headDist = Math.abs(Math.hypot(u, v + headOffset) - headR);
+      if (shaft <= shaftR || (headDist <= headThick / 2 && v + headOffset < headR * 0.55)) {
         r = 255; g = 255; b = 255;
-        if (inside(x, y, px0 + screenPad, py0 + screenPad * 1.6, px0 + pw - screenPad, py0 + ph - screenPad * 1.6, phoneR * 0.5)) {
-          r = Math.round(r1 * 0.75); g = Math.round(g1 * 0.75); b = Math.round(b1 * 0.75);
-        }
       }
       px[i] = r; px[i + 1] = g; px[i + 2] = b; px[i + 3] = 255;
     }
@@ -112,8 +117,8 @@ function buildShop(cfg) {
   const accent2 = cfg.palette?.accent2 || accent;
   const accentInk = cfg.palette?.accentInk || '#ffffff';
 
-  const icon512 = 'data:image/png;base64,' + makeIcon(512, accent, accent2).toString('base64');
-  const icon180 = 'data:image/png;base64,' + makeIcon(180, accent, accent2).toString('base64');
+  const icon512 = 'data:image/png;base64,' + makeIcon(512, accent).toString('base64');
+  const icon180 = 'data:image/png;base64,' + makeIcon(180, accent).toString('base64');
 
   const manifest = {
     name: cfg.shopName,
@@ -157,7 +162,8 @@ function buildShop(cfg) {
     }, null, 2) + ';\n'
     + '/* Premier démarrage : l’identité de la boutique renseigne les paramètres restés au réglage d’usine. */\n'
     + 'globalThis.MS.configDefaults = { shopName: MS.config.shopName, docName: MS.config.docName,'
-    + ' address: MS.config.address, phone: MS.config.phone, email: MS.config.email, siret: MS.config.siret };\n';
+    + ' address: MS.config.address, phone: MS.config.phone, email: MS.config.email,'
+    + ' siret: MS.config.siret, logo: MS.config.logo };\n';
 
   const scripts = [configJs].concat(
     JS_FILES.map((f) => '/* ===== ' + f + ' ===== */\n' + fs.readFileSync(path.join(SRC, 'js', f), 'utf8'))
