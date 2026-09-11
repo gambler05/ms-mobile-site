@@ -34,7 +34,7 @@ Ajouter une boutique : déposer un fichier dans `shops/` sur le modèle des exis
 ## Vérifier
 
 ```bash
-npm test           # build + 49 tests unitaires + 43 tests navigateur
+npm test           # build + 49 tests unitaires + 48 tests navigateur
 npm run test:unit  # tests unitaires seuls (Node, sans navigateur)
 npm run test:e2e   # tests navigateur seuls (Playwright/Chromium)
 ```
@@ -55,6 +55,13 @@ réellement :
 
 Les documents imprimés produits par les tests sont déposés dans
 `test-results/print/` (PDF et PNG) pour inspection à l’œil.
+
+## Variante d'interface « Atelier 3D »
+
+`design/atelier-3d.html` propose un poste de pilotage sombre avec une scène 3D
+de l'atelier au centre, rendue sans aucune bibliothèque (moteur logiciel sur
+canvas). Même contrainte que les fichiers de boutique : autonome et hors ligne.
+Voir `design/README.md`.
 
 ## Organisation du code
 
