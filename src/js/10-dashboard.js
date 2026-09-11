@@ -18,10 +18,10 @@
 
     host.innerHTML =
       '<div class="grid stats-grid">'
-      + ui.statCard("Chiffre d’affaires du jour", ui.money(stats.revenueToday()), fmtDate(new Date()), 'primary')
-      + ui.statCard('Ce mois-ci', ui.money(month), deltaText, delta >= 0 ? 'good' : 'warn')
-      + ui.statCard('Réparations en cours', String(rep.open), rep.ready + ' prête(s) à livrer', 'neutral')
-      + ui.statCard('Alertes de stock', String(alerts), alerts ? 'À réapprovisionner' : 'Rien à signaler', alerts ? 'warn' : 'good')
+      + ui.statCard("Chiffre d’affaires du jour", ui.money(stats.revenueToday()), fmtDate(new Date()), 'primary', 'euro')
+      + ui.statCard('Ce mois-ci', ui.money(month), deltaText, delta >= 0 ? 'good' : 'warn', 'dashboard')
+      + ui.statCard('Réparations en cours', String(rep.open), rep.ready + ' prête(s) à livrer', 'neutral', 'wrench')
+      + ui.statCard('Alertes de stock', String(alerts), alerts ? 'À réapprovisionner' : 'Rien à signaler', alerts ? 'warn' : 'good', 'alert')
       + '</div>'
 
       + '<div class="row-actions">'

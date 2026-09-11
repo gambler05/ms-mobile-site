@@ -217,9 +217,10 @@
     return '<div class="empty">' + icon('box') + '<p>' + esc(message) + '</p>' + (S(action) || '') + '</div>';
   }
 
-  function statCard(label, value, hint, kind) {
+  function statCard(label, value, hint, kind, iconName) {
     return '<div class="stat stat-' + esc(kind || 'neutral') + '">'
-      + '<span class="stat-label">' + esc(label) + '</span>'
+      + '<div class="stat-top"><span class="stat-label">' + esc(label) + '</span>'
+      + (iconName ? '<span class="stat-chip">' + icon(iconName) + '</span>' : '') + '</div>'
       + '<strong class="stat-value">' + esc(value) + '</strong>'
       + (hint ? '<span class="stat-hint">' + esc(hint) + '</span>' : '') + '</div>';
   }

@@ -488,10 +488,10 @@
     const body = '<p class="lead">' + (isBackup ? 'Sauvegarde interne MS-MOBILE' : 'Export d’un logiciel tiers') + '</p>'
       + '<p class="muted">' + esc(report.filename) + '</p>'
       + '<div class="grid stats-grid">'
-      + ui.statCard('Articles', String(report.counts.products), '', 'neutral')
-      + ui.statCard('Clients', String(report.counts.clients), report.mergedClients ? report.mergedClients + ' doublon(s) fusionné(s)' : '', 'neutral')
-      + ui.statCard('Réparations', String(report.counts.repairs), '', 'neutral')
-      + ui.statCard('Opérations de caisse', String(report.counts.cash), 'total ' + ui.money(report.cashTotal), 'primary')
+      + ui.statCard('Articles', String(report.counts.products), '', 'neutral', 'box')
+      + ui.statCard('Clients', String(report.counts.clients), report.mergedClients ? report.mergedClients + ' doublon(s) fusionné(s)' : '', 'neutral', 'users')
+      + ui.statCard('Réparations', String(report.counts.repairs), '', 'neutral', 'wrench')
+      + ui.statCard('Opérations de caisse', String(report.counts.cash), 'total ' + ui.money(report.cashTotal), 'primary', 'euro')
       + '</div>'
       + '<ul class="report-list">'
       + '<li>Montant total de caisse : <b>' + esc(ui.money(report.cashTotal)) + '</b></li>'

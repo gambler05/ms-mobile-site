@@ -106,8 +106,8 @@
       + '<div class="def"><dt>Client depuis</dt><dd>' + esc(fmtDate(client.createdAt)) + '</dd></div>'
       + '</dl></section>'
       + '<section class="card"><h2>Chiffres</h2><div class="grid stats-grid">'
-      + ui.statCard('Réparations', String(repairs.length), '', 'primary')
-      + ui.statCard('Encaissé', ui.money(spent), 'toutes opérations', 'neutral')
+      + ui.statCard('Réparations', String(repairs.length), '', 'primary', 'wrench')
+      + ui.statCard('Encaissé', ui.money(spent), 'toutes opérations', 'neutral', 'euro')
       + '</div></section></div>'
       + '<section class="card"><h2>Historique des réparations</h2>'
       + (repairs.length

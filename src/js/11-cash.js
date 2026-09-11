@@ -27,10 +27,10 @@
     host.innerHTML =
       transactionCard()
       + '<div class="grid stats-grid">'
-      + ui.statCard('Total encaissé', ui.money(totals.revenue), periodLabel(), 'primary')
-      + ui.statCard('Espèces', ui.money(totals.cash), '', 'neutral')
-      + ui.statCard('Carte bancaire', ui.money(totals.card), '', 'neutral')
-      + ui.statCard('Retraits', ui.money(totals.withdrawals), 'Déduits du total', totals.withdrawals ? 'warn' : 'neutral')
+      + ui.statCard('Total encaissé', ui.money(totals.revenue), periodLabel(), 'primary', 'euro')
+      + ui.statCard('Espèces', ui.money(totals.cash), '', 'neutral', 'cash')
+      + ui.statCard('Carte bancaire', ui.money(totals.card), '', 'neutral', 'cash')
+      + ui.statCard('Retraits', ui.money(totals.withdrawals), 'Déduits du total', totals.withdrawals ? 'warn' : 'neutral', 'minus')
       + '</div>'
       + filtersHtml()
       + (outside

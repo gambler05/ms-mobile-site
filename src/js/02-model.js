@@ -38,7 +38,7 @@
     smsTemplate: 'Bonjour {client}, votre {appareil} est prêt. Montant à régler : {montant}. {boutique} — réf. {reference}.',
     cgv: "Le client déclare avoir pris connaissance des conditions de dépôt. Tout appareil non retiré dans un délai de 90 jours pourra être considéré comme abandonné. La garantie couvre la pièce remplacée pendant {garantie} mois, hors casse, oxydation et mauvaise utilisation. Une sauvegarde des données est recommandée avant intervention : l’atelier ne peut être tenu responsable d’une perte de données.",
     logo: '',
-    theme: 'light',
+    theme: 'dark',
     authScope: 'off',
     autolockMinutes: 0,
     maxAttempts: 5,
@@ -62,7 +62,7 @@
     out.smsTemplate = S(s.smsTemplate, FACTORY_SETTINGS.smsTemplate) || FACTORY_SETTINGS.smsTemplate;
     out.cgv = S(s.cgv, FACTORY_SETTINGS.cgv) || FACTORY_SETTINGS.cgv;
     out.logo = S(s.logo);
-    out.theme = pick(s.theme, ['light', 'dark'], 'light');
+    out.theme = pick(s.theme, ['light', 'dark'], 'dark');
     out.authScope = pick(s.authScope, ['off', 'app', 'sensitive'], 'off');
     out.autolockMinutes = pick(I(s.autolockMinutes, 0, 0), [0, 5, 15, 30, 60], 0);
     out.maxAttempts = I(s.maxAttempts === undefined ? 5 : s.maxAttempts, 5, 1);
