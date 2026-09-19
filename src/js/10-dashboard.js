@@ -21,7 +21,7 @@
       + ui.statCard("Chiffre d’affaires du jour", ui.money(stats.revenueToday()), fmtDate(new Date()), 'primary', 'euro')
       + ui.statCard('Ce mois-ci', ui.money(month), deltaText, delta >= 0 ? 'good' : 'warn', 'dashboard')
       + ui.statCard('Réparations en cours', String(rep.open), rep.ready + ' prête(s) à livrer', 'neutral', 'wrench')
-      + ui.statCard('Alertes de stock', String(alerts), alerts ? 'À réapprovisionner' : 'Rien à signaler', alerts ? 'warn' : 'good', 'alert')
+      + ui.statCard('Alertes de stock', String(alerts), alerts ? 'À réapprovisionner' : 'Rien à signaler', alerts ? 'bad' : 'neutral', 'alert')
       + '</div>'
 
       + '<div class="row-actions">'
@@ -47,7 +47,7 @@
   function chartHtml() {
     const series = stats.revenueSeries(14);
     const max = Math.max(1, ...series.map((p) => p.value));
-    const W = 560, H = 180, padX = 44, padY = 18;
+    const W = 560, H = 180, padX = 58, padY = 20;
     const stepX = (W - padX * 2) / Math.max(1, series.length - 1);
     const pts = series.map((p, i) => {
       const x = padX + i * stepX;

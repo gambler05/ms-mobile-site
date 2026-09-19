@@ -108,7 +108,7 @@
                 ? ui.badge('Décomptée', 'good') : ui.badge('Non décomptée', 'warn')) + '</td>'
               + '<td class="col-act" data-label="Actions"><div class="row-btns">'
               + (S(p.productId)
-                ? '<button type="button" class="btn small ghost" data-act="toggle-part">' + (p.fromStock ? 'Remettre en stock' : 'Décompter') + '</button>'
+                ? '<button type="button" class="btn small ghost" data-act="toggle-part">' + (p.fromStock ? 'Remettre' : 'Décompter') + '</button>'
                 : '')
               + '<button type="button" class="icon-btn" data-act="part-qty" aria-label="Changer la quantité">' + ui.icon('edit') + '</button>'
               + '<button type="button" class="icon-btn danger-ghost" data-act="del-part" aria-label="Retirer la pièce">' + ui.icon('trash') + '</button>'

@@ -56,6 +56,17 @@ réellement :
 Les documents imprimés produits par les tests sont déposés dans
 `test-results/print/` (PDF et PNG) pour inspection à l’œil.
 
+## Charte visuelle
+
+Langage institutionnel sur canevas quasi blanc (`#f6f6f8`) : cartes blanches à
+filet fin, indigo navy (`#111a4a`) pour la structure et l'action principale,
+seafoam (`#167e6c`) pour les chiffres, les identifiants et les graphiques,
+orange de signal (`#ec652b`) réservé à l'alerte — une seule surface saturée par
+écran. Rayon 8 px partout, pastilles en 9999 px, monospace pour la donnée
+technique. Thème clair par défaut ; le thème sombre inverse sur `#011821` et
+prend le seafoam comme couleur d'action, l'indigo devenant illisible sur fond
+sombre. Tout est centralisé dans les variables en tête de `src/styles.css`.
+
 ## Variante d'interface « Atelier 3D »
 
 `design/atelier-3d.html` propose un poste de pilotage sombre avec une scène 3D

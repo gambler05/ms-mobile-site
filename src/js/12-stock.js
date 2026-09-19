@@ -41,8 +41,8 @@
       '<div class="grid stats-grid">'
       + ui.statCard('Articles en stock', String(st.units), 'unités', 'primary', 'box')
       + ui.statCard('Références', String(st.refs), '', 'neutral', 'list')
-      + ui.statCard('Stock faible', String(st.low), 'sous le seuil', st.low ? 'warn' : 'good', 'alert')
-      + ui.statCard('Ruptures', String(st.out), 'à zéro', st.out ? 'bad' : 'good', 'alert')
+      + ui.statCard('Stock faible', String(st.low), 'sous le seuil', st.low ? 'warn' : 'neutral', 'alert')
+      + ui.statCard('Ruptures', String(st.out), 'à zéro', st.out ? 'bad' : 'neutral', 'alert')
       + '</div>'
       + '<section class="card filters"><div class="filter-row">'
       + '<label class="field grow"><span>Rechercher</span>'

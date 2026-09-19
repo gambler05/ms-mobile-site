@@ -14,9 +14,9 @@
 
     host.innerHTML =
       '<div class="grid stats-grid">'
-      + ui.statCard('Ruptures', String(out.length), 'articles à zéro', out.length ? 'bad' : 'good', 'alert')
-      + ui.statCard('Stock faible', String(low.length), 'sous le seuil', low.length ? 'warn' : 'good', 'box')
-      + ui.statCard('Seuil général', String(I(settings.lowStock, 2, 0)), 'unités', 'neutral', 'settings')
+      + ui.statCard('Ruptures', String(out.length), 'articles à zéro', out.length ? 'bad' : 'neutral', 'alert')
+      + ui.statCard('Stock faible', String(low.length), 'sous le seuil', low.length ? 'warn' : 'neutral', 'box')
+      + ui.statCard('Seuil général', String(I(settings.lowStock, 2, 0)), 'unités', 'primary', 'settings')
       + '</div>'
       + section('Articles à zéro', out, 'bad', 'Aucune rupture. ')
       + section('Articles sous leur seuil', low, 'warn', 'Aucun article sous son seuil.');
