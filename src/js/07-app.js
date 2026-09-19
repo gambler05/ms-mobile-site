@@ -18,6 +18,7 @@
       { id: 'stock', label: 'Stock', icon: 'box', mobile: true },
       { id: 'alerts', label: 'Ruptures', icon: 'alert', mobile: false },
       { id: 'repairs', label: 'Réparations', icon: 'wrench', mobile: true },
+      { id: 'atelier', label: 'Atelier 3D', icon: 'cube', mobile: false },
       { id: 'clients', label: 'Clients', icon: 'users', mobile: false },
       { id: 'pricing', label: 'Grilles tarifaires', icon: 'tags', mobile: false },
     ] },

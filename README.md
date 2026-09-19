@@ -50,6 +50,7 @@ réellement :
 | Multi-appareils avec serveur partagé et stockages séparés | `e2e/05` |
 | Formats d’import : noms de champs, dates, correspondances de valeurs | `unit/04`, `e2e/06` |
 | Impression : PDF réel, pages comptées, images regardées | `e2e/04` |
+| Écran Atelier 3D : scène peinte, familles réelles, cycle de vie | `e2e/07` |
 | Largeurs de 360 à 1 600 px, aucun débordement, aucun libellé tronqué | `e2e/02` |
 | Visibilité contrôlée au style calculé et à la position réelle | `e2e/01`, `e2e/02` |
 
@@ -67,12 +68,18 @@ technique. Thème clair par défaut ; le thème sombre inverse sur `#011821` et
 prend le seafoam comme couleur d'action, l'indigo devenant illisible sur fond
 sombre. Tout est centralisé dans les variables en tête de `src/styles.css`.
 
-## Variante d'interface « Atelier 3D »
+## Écran « Atelier 3D »
 
-`design/atelier-3d.html` propose un poste de pilotage sombre avec une scène 3D
-de l'atelier au centre, rendue sans aucune bibliothèque (moteur logiciel sur
-canvas). Même contrainte que les fichiers de boutique : autonome et hors ligne.
-Voir `design/README.md`.
+Un écran de l'application (menu Boutique) montre les appareils en cours de
+réparation posés sur une arène en 3D, groupés par famille (téléphones,
+ordinateurs, consoles, tablettes). Les compteurs, les barres et les fiches
+affichées viennent des vraies réparations ; cliquer une famille amène la caméra
+sur l'appareil et filtre le panneau de droite.
+
+La scène est rendue par un petit moteur logiciel sur canvas 2D — projection
+perspective, tri des faces par profondeur, éclairage plat, brouillard et ombres
+portées. Aucune bibliothèque 3D : le fichier reste autonome et hors ligne. Le
+rendu suit le thème, studio clair ou atelier sombre.
 
 ## Organisation du code
 
@@ -89,6 +96,7 @@ src/js/07-app.js      routage, navigation, garde d’accès
 src/js/08-ops.js      opérations métier (stock, caisse, réparations, clients)
 src/js/09-stats.js    agrégats et périodes
 src/js/10..19         les onze écrans
+src/js/23-atelier.js  écran Atelier 3D (moteur de rendu inclus)
 src/js/20-import.js   import tolérant
 src/js/21-print.js    ticket et facture
 src/js/22-demo.js     jeu de démonstration
