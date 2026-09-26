@@ -1,0 +1,12 @@
+{
+  "name": "repairflow-standalone",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "RepairFlow — édition autonome : un seul fichier HTML, données dans le navigateur, hébergeable sur Firebase Hosting.",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node build.mjs && node --test tests/unit.test.mjs",
+    "test:e2e": "node build.mjs && node tests/e2e.mjs"
+  }
+}

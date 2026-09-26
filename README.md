@@ -1,6 +1,6 @@
 # MS-MOBILE
 
-> **Nouveau : RepairFlow** — l'application web complète (Next.js, Prisma, multi-boutiques, caisse, stock, espace client) se trouve dans le dossier [`repairflow/`](repairflow/README.md). Le fichier HTML autonome décrit ci-dessous est l'ancienne génération, conservée telle quelle.
+> **RepairFlow** existe en deux éditions : l'application serveur complète (Next.js, Prisma, multi-boutiques, espace client à distance) dans [`repairflow/`](repairflow/README.md), et l'**édition autonome en un seul fichier HTML** ([`repairflow-standalone/dist/repairflow.html`](repairflow-standalone/dist/repairflow.html), données dans le navigateur, hébergeable sur Firebase Hosting en quelques minutes : voir [`repairflow-standalone/README.md`](repairflow-standalone/README.md)). Le fichier HTML décrit ci-dessous est l'ancienne génération, conservée telle quelle.
 
 Application de gestion commerciale pour atelier de réparation et vente de téléphonie,
 conforme à la spécification fonctionnelle `MSMOBILEspecification.md`.
