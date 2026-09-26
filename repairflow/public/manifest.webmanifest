@@ -1,0 +1,19 @@
+{
+  "name": "RepairFlow",
+  "short_name": "RepairFlow",
+  "description": "Gestion d'atelier de réparation et de vente d'électronique",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#090B10",
+  "theme_color": "#090B10",
+  "lang": "fr",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Nouveau ticket", "url": "/repairs/new" },
+    { "name": "Caisse", "url": "/pos" }
+  ]
+}
