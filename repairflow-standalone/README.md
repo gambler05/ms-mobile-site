@@ -20,6 +20,14 @@
 
 Sans ligne de commande : ouvrez la console Firebase → Hosting → « Commencer » puis glissez-déposez le fichier renommé `index.html`.
 
+## Design « Porcelaine 3D »
+
+Interface claire par défaut : fond blanc cassé `#F6F5F2`, cartes blanches à ombres de contact, encre `#172033`, accent cobalt `#245CFF`, rayons de 12 à 20 px. Titres en Fraunces (Google Fonts, avec repli serif système hors ligne), corps en Inter. Les cartes se soulèvent de 3 px au survol sans déplacer leur contenu ; les onglets et contrôles segmentés ont un indicateur glissant ; les modales s'ouvrent en 160 ms. Le thème sombre « Obsidienne » reste disponible dans Réglages › Apparence, ainsi que la densité compacte.
+
+La scène 3D (smartphone blanc en vue éclatée au-dessus d'un socle en céramique) est réalisée en CSS 3D dans le module `09-scene.js` : une image SVG de secours s'affiche immédiatement, la scène est montée à l'inactivité du navigateur, seulement au-dessus de 640 px et sans préférence de mouvement réduit. Les pièces s'assemblent en une seconde à l'apparition ; les boutons « Rejouer » et « Figer » sont accessibles au clavier. Elle apparaît sur la connexion, l'état vide des réparations et Réglages › À propos.
+
+Contrastes vérifiés AA sur le thème clair (texte secondaire ≥ 4,5:1, cobalt sur blanc 4,6:1) ; navigation clavier conservée (focus visible, pièges de focus dans les panneaux, raccourcis).
+
 ## Comptes de démonstration
 
 | Compte | Rôle | Mot de passe |

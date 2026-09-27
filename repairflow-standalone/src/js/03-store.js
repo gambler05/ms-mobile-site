@@ -15,11 +15,13 @@ RF.store = (() => {
     users: [], session: { userId: null },
     customers: [], devices: [], tickets: [], products: [], movements: [], suppliers: [], purchaseOrders: [], counts: [], sales: [], registers: [], creditNotes: [], notifications: [], audit: [], drafts: [],
     counters: { TICKET: 0, SALE: 0, PO: 0, CREDIT: 0 },
-    settings: { theme: "dark", density: "comfortable", loyalty: { enabled: true, pointsPerEuro: 1, vipThresholdCents: 100000 }, pickupReminderDays: 5, unlockRetentionDays: 30, qcItems: ["Allumage et démarrage", "Écran tactile et affichage", "Boutons et vibreur", "Caméras avant et arrière", "Haut-parleur, micro, écouteur", "Charge et connectique", "Réseau, Wi‑Fi et Bluetooth", "Étanchéité / fermeture châssis", "Nettoyage et aspect final"], receptionItems: ["S'allume", "Écran fissuré", "Châssis rayé / plié", "Traces d'oxydation", "Déjà ouvert / réparé", "Compte verrouillé (iCloud / Google)"] },
+    settings: { theme: "light", density: "comfortable", loyalty: { enabled: true, pointsPerEuro: 1, vipThresholdCents: 100000 }, pickupReminderDays: 5, unlockRetentionDays: 30, qcItems: ["Allumage et démarrage", "Écran tactile et affichage", "Boutons et vibreur", "Caméras avant et arrière", "Haut-parleur, micro, écouteur", "Charge et connectique", "Réseau, Wi‑Fi et Bluetooth", "Étanchéité / fermeture châssis", "Nettoyage et aspect final"], receptionItems: ["S'allume", "Écran fissuré", "Châssis rayé / plié", "Traces d'oxydation", "Déjà ouvert / réparé", "Compte verrouillé (iCloud / Google)"] },
   });
   const load = () => {
     try { const raw = localStorage.getItem(KEY); state = raw ? JSON.parse(raw) : null; } catch { state = null; }
     if (!state) { state = RF.seed ? RF.seed.build() : empty(); save(); }
+    // Migration : la refonte « Porcelaine » rend le thème clair par défaut (une seule fois, le choix reste modifiable).
+    if (!state.settings.themeV2) { state.settings.themeV2 = true; if (state.settings.theme === "dark") state.settings.theme = "light"; save(); }
     return state;
   };
   let saveError = false;

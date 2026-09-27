@@ -6,7 +6,7 @@ const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PW_MODULE || "playwright");
 const shots = process.env.SHOTS || "tests/shots"; mkdirSync(shots, { recursive: true });
 const url = "file://" + resolve("dist/repairflow.html");
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || "/opt/pw-browsers/chromium" });
+const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || "/opt/pw-browsers/chromium", args: ["--ignore-certificate-errors"] });
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, locale: "fr-FR" });
 const page = await ctx.newPage();
 const errors = []; page.on("pageerror", (e) => errors.push("pageerror: " + e.message)); page.on("console", (m) => { if (m.type() === "error") errors.push("console: " + m.text()); });
@@ -14,7 +14,7 @@ let failed = 0; const step = async (name, fn) => { try { await fn(); console.log
 const overflow = []; const goto = async (hash) => { await page.evaluate((h) => (location.hash = h), hash); await page.waitForTimeout(150); const o = await page.evaluate(() => [document.documentElement.scrollWidth, document.documentElement.clientWidth, window.scrollX]); if (o[0] > o[1] + 1) overflow.push(`${hash} : ${o[0]}>${o[1]}`); };
 const shot = (n) => page.screenshot({ path: `${shots}/${n}.png`, fullPage: false });
 
-await page.goto(url); await page.waitForSelector("main.login", { timeout: 15000 });
+await page.goto(url); await page.waitForSelector("main.login", { timeout: 15000 }); await page.waitForTimeout(1500); await shot("00-login");
 await step("connexion", async () => { await page.fill("#email", "admin@msmobile.example.test"); await page.fill("#password", "demo1234"); await page.click("button[type=submit]"); await page.waitForSelector("section.kpis", { timeout: 5000 }); await shot("01-dashboard"); });
 await step("réparations tableau/kanban/planning", async () => { await goto("/repairs"); await page.waitForSelector("table.tbl"); await shot("02-repairs"); await goto("/repairs?view=kanban"); await page.waitForSelector(".kanban"); await shot("03-kanban"); await goto("/repairs?view=planning"); await page.waitForSelector(".plan"); });
 await step("fiche ticket + onglets", async () => { await goto("/repairs"); await page.waitForSelector("table.tbl tbody tr"); const id = await page.evaluate(() => RF.store.get().tickets.find((t) => t.status === "IN_REPAIR").id); await goto("/repairs/" + id); await page.waitForSelector(".detail-tabs"); await shot("04-ticket"); for (const t of ["quotes", "parts", "work", "qc", "photos"]) { await goto(`/repairs/${id}?tab=${t}`); await page.waitForSelector(".detail-tabs"); } });
@@ -51,6 +51,6 @@ await step("persistance après rechargement", async () => { const before = await
 await step("export JSON", async () => { const json = await page.evaluate(() => RF.store.exportJson()); const o = JSON.parse(json); if (o.version !== 1 || !o.tickets.length) throw new Error("export invalide"); });
 await step("déconnexion / permission vendeur", async () => { await page.evaluate(() => { RF.model.logout(); }); await goto("/login"); await page.waitForSelector("main.login"); await page.fill("#email", "lea@msmobile.example.test"); await page.fill("#password", "demo1234"); await page.click("button[type=submit]"); await page.waitForSelector("section.kpis"); await goto("/reports"); await page.waitForSelector("text=Accès réservé"); });
 if (overflow.length) { console.log("Débordement horizontal :\n" + overflow.join("\n")); failed++; }
-const bad = errors.filter((e) => !/favicon|net::ERR_FILE_NOT_FOUND/.test(e));
+const bad = errors.filter((e) => !/favicon|net::ERR_FILE_NOT_FOUND|ERR_CERT|fonts\.g/.test(e));
 console.log(bad.length ? "Erreurs JS :\n" + bad.join("\n") : "Aucune erreur JS."); if (bad.length) failed++;
 await browser.close(); process.exit(failed ? 1 : 0);
