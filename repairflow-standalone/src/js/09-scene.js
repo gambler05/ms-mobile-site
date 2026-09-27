@@ -34,6 +34,7 @@ RF.scene = (() => {
   const block = (o = {}) => {
     const box = h("div.scene-box", { class: o.cls, style: o.style });
     const fb = fallback(o.compact); box.append(fb);
+    if (o.callouts) for (const c of o.callouts) box.append(h("div.callout", { class: c.side === "left" ? "l" : "", style: { top: c.top, [c.side === "left" ? "right" : "left"]: c.x, "--len": c.len || "56px" } }, h("b", c.title), ...(c.lines || []).map((l) => h("span", l))));
     const ok = () => supports3d() && !reduced() && window.innerWidth >= (o.minWidth ?? 640);
     if (!ok()) return box;
     const ctl = h("div.scene-ctl", { role: "group", "aria-label": "Animation de la scène 3D" });

@@ -20,13 +20,13 @@
 
 Sans ligne de commande : ouvrez la console Firebase → Hosting → « Commencer » puis glissez-déposez le fichier renommé `index.html`.
 
-## Design « Porcelaine 3D »
+## Design « Holo »
 
-Interface claire par défaut : fond blanc cassé `#F6F5F2`, cartes blanches à ombres de contact, encre `#172033`, accent cobalt `#245CFF`, rayons de 12 à 20 px. Titres en Fraunces (Google Fonts, avec repli serif système hors ligne), corps en Inter. Les cartes se soulèvent de 3 px au survol sans déplacer leur contenu ; les onglets et contrôles segmentés ont un indicateur glissant ; les modales s'ouvrent en 160 ms. Le thème sombre « Obsidienne » reste disponible dans Réglages › Apparence, ainsi que la densité compacte.
+Thème sombre par défaut : fond bleu nuit `#06111A`, cartes `#0B1C27` à lueur cyan `#1FE3D3`, texte `#EAF6F7`, accents bleu `#2D8CFF`, ambre et vert pour les états. Titres en Manrope (Google Fonts, repli système hors ligne), corps en Inter. Le thème clair « Porcelaine » (fond blanc cassé, cobalt) reste disponible dans Réglages › Apparence, ainsi que la densité compacte.
 
-La scène 3D (smartphone blanc en vue éclatée au-dessus d'un socle en céramique) est réalisée en CSS 3D dans le module `09-scene.js` : une image SVG de secours s'affiche immédiatement, la scène est montée à l'inactivité du navigateur, seulement au-dessus de 640 px et sans préférence de mouvement réduit. Les pièces s'assemblent en une seconde à l'apparition ; les boutons « Rejouer » et « Figer » sont accessibles au clavier. Elle apparaît sur la connexion, l'état vide des réparations et Réglages › À propos.
+Le tableau de bord ouvre sur un bandeau « L'atelier, en un regard » avec des faits calculés (appareils en atelier, techniciens, pièces sous seuil) et la scène 3D d'un smartphone en vue éclatée avec légendes techniques (écran, carte mère, batterie). Sous le bandeau : quatre tuiles à icône, micro-graphique sur 8 semaines et variation datée ; l'évolution hebdomadaire du chiffre d'affaires en barres ; la file des réparations filtrable (en cours / prêts / en attente) avec progression du parcours ; l'activité récente construite depuis le journal et les événements des tickets.
 
-Contrastes vérifiés AA sur le thème clair (texte secondaire ≥ 4,5:1, cobalt sur blanc 4,6:1) ; navigation clavier conservée (focus visible, pièges de focus dans les panneaux, raccourcis).
+La scène 3D est réalisée en CSS 3D dans le module `09-scene.js` : une image SVG de secours s'affiche immédiatement, la scène est montée à l'inactivité du navigateur, seulement au-dessus de 1024 px sur le bandeau (640 px ailleurs) et sans préférence de mouvement réduit. Les pièces s'assemblent en une seconde ; « Rejouer » et « Figer » sont accessibles au clavier. Les cartes se soulèvent de 3 px au survol sans déplacer leur contenu ; les onglets ont un indicateur glissant ; les modales s'ouvrent en 160 ms. Contrastes AA vérifiés sur les deux thèmes pour le texte courant.
 
 ## Comptes de démonstration
 
