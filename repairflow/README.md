@@ -9,18 +9,17 @@ Deux thèmes composés séparément : **Obsidian** (sombre, par défaut) et **Po
 
 ## Démarrage rapide (démonstration locale, SQLite)
 
+Prérequis : [Node.js 22 LTS](https://nodejs.org) et Git. Fonctionne sous Windows, macOS et Linux.
+
 ```bash
-cd repairflow
+git clone -b claude/repairflow-app-build-oydvz6 https://github.com/gambler05/ms-mobile-site.git
+cd ms-mobile-site/repairflow
 npm install
-cp .env.example .env
-# Générer les secrets :
-#   ENCRYPTION_KEY = openssl rand -base64 32   (32 octets, obligatoire)
-#   SESSION_SECRET = openssl rand -base64 32
-#   CRON_SECRET    = openssl rand -hex 16
-npm run db:migrate      # crée dev.db et applique les migrations
-npm run db:seed         # jeu de données MS MOBILE (8 semaines d'activité)
-npm run dev             # http://localhost:3000
+npm run setup    # crée .env avec des secrets générés, la base SQLite et les données de démo
+npm run dev      # puis ouvrir http://localhost:3000
 ```
+
+`npm run setup` ne touche pas à un `.env` existant. Pour une installation manuelle, copiez `.env.example` en `.env` et renseignez `ENCRYPTION_KEY`, `SESSION_SECRET` et `CRON_SECRET`.
 
 Comptes de démonstration (mot de passe `demo1234`) :
 

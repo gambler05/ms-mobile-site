@@ -4,6 +4,7 @@
   "private": true,
   "description": "RepairFlow — gestion d'atelier de réparation et de vente d'électronique. Établissement de démonstration : MS MOBILE.",
   "scripts": {
+    "setup": "node scripts/setup.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
