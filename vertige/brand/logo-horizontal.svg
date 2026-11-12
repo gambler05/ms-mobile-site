@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 480">
+  <rect width="1600" height="480" fill="#0A0A0F"/>
+  <polyline points="90.0,69.0 240.0,207.0 390.0,69.0" fill="none" stroke="#F3EEE3" stroke-width="39.0" stroke-linejoin="miter"/>
+  <polyline points="153.0,189.0 240.0,269.0 327.0,189.0" fill="none" stroke="#F3EEE3" stroke-width="22.6" stroke-linejoin="miter"/>
+  <polyline points="189.5,258.6 240.0,305.0 290.5,258.6" fill="none" stroke="#F3EEE3" stroke-width="13.1" stroke-linejoin="miter"/>
+  <polyline points="210.7,299.0 240.0,325.9 269.3,299.0" fill="none" stroke="#F3EEE3" stroke-width="7.6" stroke-linejoin="miter"/>
+  <circle cx="240" cy="411.0" r="22.5" fill="#FF4A1C"/>
+  <text x="470" y="300" font-family="Inter Display, Inter, sans-serif" font-weight="900" font-size="190" letter-spacing="12" fill="#F3EEE3">VERTIGE</text>
+</svg>

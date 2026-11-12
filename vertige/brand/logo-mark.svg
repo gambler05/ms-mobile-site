@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080">
+  <polyline points="260.0,208.8 540.0,466.4 820.0,208.8" fill="none" stroke="#F3EEE3" stroke-width="72.8" stroke-linejoin="miter"/>
+  <polyline points="377.6,432.8 540.0,582.2 702.4,432.8" fill="none" stroke="#F3EEE3" stroke-width="42.2" stroke-linejoin="miter"/>
+  <polyline points="445.8,562.7 540.0,649.4 634.2,562.7" fill="none" stroke="#F3EEE3" stroke-width="24.5" stroke-linejoin="miter"/>
+  <polyline points="485.4,638.1 540.0,688.3 594.6,638.1" fill="none" stroke="#F3EEE3" stroke-width="14.2" stroke-linejoin="miter"/>
+  <circle cx="540" cy="847.2" r="42.0" fill="#FF4A1C"/>
+</svg>

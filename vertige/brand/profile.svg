@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080">
+  <defs><radialGradient id="g" cx="50%" cy="62%" r="70%"><stop offset="0" stop-color="#2A1E24"/><stop offset="1" stop-color="#0A0A0F"/></radialGradient></defs>
+  <rect width="1080" height="1080" fill="url(#g)"/>
+  <polyline points="220.0,137.2 540.0,431.6 860.0,137.2" fill="none" stroke="#F3EEE3" stroke-width="83.2" stroke-linejoin="miter"/>
+  <polyline points="354.4,393.2 540.0,564.0 725.6,393.2" fill="none" stroke="#F3EEE3" stroke-width="48.3" stroke-linejoin="miter"/>
+  <polyline points="432.4,541.7 540.0,640.7 647.6,541.7" fill="none" stroke="#F3EEE3" stroke-width="28.0" stroke-linejoin="miter"/>
+  <polyline points="477.6,627.8 540.0,685.2 602.4,627.8" fill="none" stroke="#F3EEE3" stroke-width="16.2" stroke-linejoin="miter"/>
+  <circle cx="540" cy="866.8" r="54.4" fill="#FF4A1C"/>
+</svg>

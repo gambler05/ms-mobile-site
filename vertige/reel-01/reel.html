@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>VERTIGE — Reel 01</title>
+<style>
+@font-face{font-family:"JBM";font-weight:500;src:url(fonts/jetbrains-mono-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"JBM";font-weight:700;src:url(fonts/jetbrains-mono-latin-700-normal.woff2) format("woff2")}
+html,body{margin:0;background:#000}
+canvas{display:block;width:1080px;height:1920px}
+body.preview canvas{width:auto;height:100vh;margin:0 auto}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* ============================================================
+   VERTIGE — Reel 01 « Un milliard de secondes »
+   Moteur déterministe : renderFrame(n) dessine l'image n (30 i/s).
+   Ouvrir avec ?preview pour une lecture temps réel.
+   ============================================================ */
+const W = 1080, H = 1920, FPS = 30, DURATION = 31.0;
+const C = { ink:'#0A0A0F', ink2:'#14141C', ivory:'#F3EEE3', red:'#FF4A1C', mist:'#8B8B99', graphite:'#2A2A33' };
+const DISPLAY = '"Inter Display","Inter",sans-serif', MONO = '"JBM",monospace';
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+
+/* ---------- repères temporels (secondes) ---------- */
+const TL = {
+  hookQ: 1.5,
+  fall1: [2.8, 4.4],  sub1: 5.1,  out1: 6.75,
+  q2: 7.0, zeros2: 7.5, silence2: 9.1,
+  fall2: [9.4, 12.4], sub2: 13.2, out2: 14.75,
+  q3: 15.0, zeros3: 15.5, silence3: 17.2,
+  fall3: [17.6, 22.6], sub3: 23.5,
+  pix1: 25.0, pix2: 26.2,
+  end: 28.0, word: 28.7, tag: 29.25, cta: 29.7,
+};
+/* ---------- profondeurs (en jours avant maintenant) ---------- */
+const YR = 365.2425;
+const T1 = 1e6 / 86400, T2 = 1e9 / 86400, T3 = 1e12 / 86400, F0 = 0.02;
+const XR = 200, YF = 1040, AN = 700;      // règle, ligne de lecture, distance « maintenant »
+
+/* ---------- utilitaires ---------- */
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const prog = (t, t0, d) => clamp((t - t0) / d);
+const eio = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const eOut = x => 1 - Math.pow(1 - x, 3);
+const eOut5 = x => 1 - Math.pow(1 - x, 5);
+const eIn = x => x * x * x;
+const eBack = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const nbsp = n => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const font = (w, s, fam = DISPLAY) => `${w} ${s}px ${fam}`;
+function fit(text, w, fam, maxW, maxS) { ctx.font = font(w, 100, fam); const m = ctx.measureText(text).width; return Math.min(maxS, 100 * maxW / m); }
+
+/* ---------- caméra : profondeur lue F(t) et gain g(t) ---------- */
+function fallOf(t) {
+  const segs = [[TL.fall1, F0, T1, 4.5], [TL.fall2, T1, T2, 6], [TL.fall3, T2, T3, 7.5]];
+  for (const [[a, b], f0, f1, G] of segs) if (t >= a && t < b) return { u: (t - a) / (b - a), f0, f1, G };
+  return null;
+}
+function cam(t) {
+  const f = fallOf(t);
+  if (f) { const e = eio(f.u); return { F: f.f0 * Math.pow(f.f1 / f.f0, e), g: 1 + f.G * Math.pow(Math.sin(Math.PI * e), 2), falling: true, u: f.u }; }
+  const F = t < TL.fall1[0] ? F0 : t < TL.fall2[0] ? T1 : t < TL.fall3[0] ? T2 : T3;
+  return { F, g: 1, falling: false, u: 0 };
+}
+const yOf = (d, c) => YF + AN * c.g * (d / c.F - 1);
+
+/* ---------- grain & poussières ---------- */
+const grain = document.createElement('canvas'); grain.width = 360; grain.height = 640;
+{ const g = grain.getContext('2d'), id = g.createImageData(360, 640), r = rng(7);
+  for (let i = 0; i < id.data.length; i += 4) { const v = r() * 255; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; } g.putImageData(id, 0, 0); }
+const DUST = (() => { const r = rng(42); return Array.from({ length: 150 }, () => ({ x: r() * W, p: r(), z: .35 + r() * 1.4, s: 1 + r() * 2.2, red: r() < .08 })); })();
+
+function background(t, c) {
+  ctx.fillStyle = C.ink; ctx.fillRect(0, 0, W, H);
+  const depth = clamp(Math.log10(c.F / F0) / Math.log10(T3 / F0));
+  const g = ctx.createRadialGradient(W * .5, YF, 60, W * .5, YF, 1300);
+  g.addColorStop(0, `rgba(${Math.round(34 + 30 * depth)},${Math.round(30 + 4 * depth)},${Math.round(46 - 14 * depth)},1)`);
+  g.addColorStop(1, 'rgba(10,10,15,1)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+function dust(t, c, alpha) {
+  const L = Math.log(c.F), c0 = cam(t - 1 / FPS), v = (L - Math.log(c0.F)) * FPS; // vitesse en log-profondeur
+  for (const p of DUST) {
+    let ph = (p.p - L * p.z * .16) % 1; if (ph < 0) ph += 1;
+    const y = ph * (H + 300) - 150, len = Math.min(520, 4 + Math.abs(v) * p.z * 95);
+    ctx.globalAlpha = alpha * (.10 + .32 * (p.z / 1.75)) * (c.falling ? 1 : .55);
+    ctx.fillStyle = p.red ? C.red : C.ivory;
+    ctx.fillRect(p.x, y, p.s * (c.falling ? .8 : 1), len);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- la règle (signature graphique) ---------- */
+const UNITS = [
+  { d: 1 / 1440, f: k => `−${k} MIN` }, { d: 1 / 24, f: k => `−${k} H` }, { d: 1, f: k => `−${k} J` },
+  { d: YR, f: k => `−${k} AN${k > 1 ? 'S' : ''}` }, { d: 10 * YR, f: k => `−${nbsp(k * 10)} ANS` },
+  { d: 100 * YR, f: k => `−${nbsp(k * 100)} ANS` }, { d: 1000 * YR, f: k => `−${nbsp(k * 1000)} ANS` },
+  { d: 10000 * YR, f: k => `−${nbsp(k * 10000)} ANS` },
+];
+function ruler(c, alpha, labels) {
+  const k = AN * c.g / c.F, y0 = yOf(0, c);
+  ctx.strokeStyle = C.ivory; ctx.fillStyle = C.ivory; ctx.lineCap = 'butt';
+  ctx.globalAlpha = alpha * .9; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(XR, Math.max(-10, y0)); ctx.lineTo(XR, H + 10); ctx.stroke();
+  const dMin = Math.max(0, c.F * (1 + (-60 - YF) / (AN * c.g))), dMax = c.F * (1 + (H + 60 - YF) / (AN * c.g));
+  for (const u of UNITS) {
+    const sp = u.d * k; if (sp < 7 || sp > 5000) continue;
+    const a = clamp((sp - 7) / 26), len = lerp(16, 86, clamp(sp / 260)), la = clamp((sp - 52) / 30);
+    const k0 = Math.max(1, Math.ceil(dMin / u.d)), k1 = Math.floor(dMax / u.d);
+    for (let i = k0; i <= k1; i++) {
+      if (sp < 40 && i % 10 === 0) continue;                 // l'unité supérieure prend le relais
+      const y = yOf(i * u.d, c);
+      ctx.globalAlpha = alpha * a * .85; ctx.lineWidth = sp > 150 ? 3 : 2;
+      ctx.beginPath(); ctx.moveTo(XR, y); ctx.lineTo(XR + len, y); ctx.stroke();
+      if (labels && la > 0) { ctx.globalAlpha = Math.min(1, alpha * (c.falling ? 3 : 1)) * la * .7; ctx.font = font(500, 21, MONO); ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(u.f(i), XR - 18, y); }
+    }
+  }
+  ctx.globalAlpha = 1; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+}
+function landmark(c, years, label, alpha) {
+  const y = yOf(years * YR, c); if (y < 200 || y > H - 380) return;
+  const a = alpha * clamp((y - 200) / 160) * clamp((H - 380 - y) / 160) * clamp(Math.abs(y - (YF - 70)) / 90 - 1.4);
+  ctx.globalAlpha = a; ctx.strokeStyle = C.ivory; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(XR, y); ctx.lineTo(XR + 150, y); ctx.stroke();
+  ctx.beginPath(); ctx.arc(XR, y, 7, 0, 7); ctx.fillStyle = C.ink; ctx.fill(); ctx.stroke();
+  ctx.fillStyle = C.ivory; ctx.font = font(800, 44); ctx.fillText(label, XR + 170, y + 4);
+  ctx.fillStyle = C.mist; ctx.font = font(500, 24, MONO); ctx.fillText(`≈ −${nbsp(years)} ANS`, XR + 172, y + 42);
+  ctx.globalAlpha = 1;
+}
+function marker(c, d, alpha) { const y = yOf(d, c); if (y < -30 || y > H + 30) return; ctx.globalAlpha = alpha; ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(XR, y, 9, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+
+/* ---------- typographie cinétique ---------- */
+// apparition lettre par lettre (ressort), sortie « aspirée » vers le haut
+function kinetic(text, x, y, fnt, t, t0, o = {}) {
+  const per = o.per ?? .028, dur = o.dur ?? .42, out = o.out ?? 1e9, col = o.color ?? C.ivory;
+  if (t < t0) return 0;
+  const eo = eIn(prog(t, out, .32)); if (eo >= 1) return 0;
+  ctx.font = fnt; ctx.textBaseline = 'alphabetic';
+  if ('letterSpacing' in ctx) ctx.letterSpacing = o.ls ?? '0px';
+  let n = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]; if (ch === ' ') continue;
+    const cx = x + ctx.measureText(text.slice(0, i)).width;
+    const p = prog(t, t0 + n * per, dur), e = eBack(p); n++;
+    if (p <= 0) continue;
+    const cw = ctx.measureText(ch).width;
+    ctx.save();
+    ctx.globalAlpha = (o.alpha ?? 1) * clamp(p * 3) * (1 - eo);
+    ctx.translate(cx + cw / 2, y + (1 - e) * (o.rise ?? 70) - eo * (260 + n * 14));
+    ctx.scale(lerp(o.s0 ?? 1.25, 1, eOut(p)) * (1 - eo * .25), lerp(o.s0 ?? 1.25, 1, eOut(p)) * (1 + eo * 1.6));
+    ctx.fillStyle = typeof col === 'function' ? col(i) : col;
+    ctx.fillText(ch, -cw / 2, 0);
+    ctx.restore();
+  }
+  const w = ctx.measureText(text).width;
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+  ctx.globalAlpha = 1; return w;
+}
+// révélation par masque (gauche → droite) avec barre vermillon qui « imprime » la ligne
+function wipe(text, x, y, fnt, t, t0, o = {}) {
+  if (t < t0) return; const out = o.out ?? 1e9, eo = eIn(prog(t, out, .28)); if (eo >= 1) return;
+  ctx.font = fnt; if ('letterSpacing' in ctx) ctx.letterSpacing = o.ls ?? '0px';
+  const w = ctx.measureText(text).width, p = eOut5(prog(t, t0, .55)), sz = parseFloat(fnt.match(/(\d+(\.\d+)?)px/)[1]);
+  ctx.save(); ctx.globalAlpha = (o.alpha ?? 1) * (1 - eo); ctx.translate(0, -eo * 120);
+  ctx.beginPath(); ctx.rect(x - 4, y - sz * 1.1, (w + 8) * p, sz * 1.5); ctx.clip();
+  ctx.fillStyle = o.color ?? C.ivory; ctx.fillText(text, x + (1 - p) * -24, y);
+  ctx.restore();
+  if (p < 1) { ctx.globalAlpha = 1 - p; ctx.fillStyle = C.red; ctx.fillRect(x + (w + 8) * p, y - sz * .95, 6, sz * 1.15); ctx.globalAlpha = 1; }
+  if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+}
+// grand chiffre qui s'écrase à l'atterrissage
+function slam(text, x, y, fnt, t, t0, o = {}) {
+  if (t < t0) return; const out = o.out ?? 1e9, eo = eIn(prog(t, out, .3)); if (eo >= 1) return;
+  const p = prog(t, t0, .38), e = eBack(p), s = lerp(1.9, 1, e);
+  ctx.save(); ctx.font = fnt; ctx.globalAlpha = (o.alpha ?? 1) * clamp(p * 4) * (1 - eo);
+  ctx.translate(x, y - eo * 300); ctx.scale(s * (1 - eo * .2), s * (1 + eo * 1.4));
+  if (p < 1) { ctx.fillStyle = C.red; ctx.globalAlpha *= .8; ctx.fillText(text, (1 - p) * 26, 0); ctx.globalAlpha = (o.alpha ?? 1) * clamp(p * 4); }
+  ctx.fillStyle = o.color ?? C.ivory; ctx.fillText(text, 0, 0);
+  ctx.restore(); ctx.globalAlpha = 1;
+}
+
+/* ---------- logo : chevrons en chute ---------- */
+function logo(cx, cy, size, p, dotAlpha = 1) {
+  ctx.lineCap = 'butt'; ctx.lineJoin = 'miter'; ctx.strokeStyle = C.ivory;
+  let y = cy - size * .52, s = size;
+  for (let i = 0; i < 4; i++) {
+    const q = eOut5(clamp(p * 4 - i * .75)); if (q > 0) {
+      const hw = s * .5, hh = s * .46;
+      ctx.globalAlpha = q; ctx.lineWidth = Math.max(3, s * .13);
+      ctx.beginPath(); ctx.moveTo(cx - hw, y - (1 - q) * 80); ctx.lineTo(cx, y + hh - (1 - q) * 80); ctx.lineTo(cx + hw, y - (1 - q) * 80); ctx.stroke();
+    }
+    y += s * .40; s *= .58;
+  }
+  ctx.globalAlpha = dotAlpha; ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(cx, cy + size * .62, size * .075, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+  return { x: cx, y: cy + size * .62, r: size * .075 };
+}
+
+/* ---------- compteur pendant la chute ---------- */
+function depthText(F) {
+  if (F < 1 / 24) return `−${Math.max(1, Math.round(F * 1440))} MIN`;
+  if (F < 1) return `−${Math.round(F * 24)} H`;
+  if (F < YR) return `−${Math.round(F)} J`;
+  const y = F / YR; return y < 2 ? '−1 AN' : `−${nbsp(y < 1000 ? y : Math.round(y / 10) * 10)} ANS`;
+}
+
+/* ============================================================
+   IMAGE
+   ============================================================ */
+function renderFrame(n) { draw(n / FPS); }
+function draw(t) {
+  const c = cam(t);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1;
+  // secousse d'atterrissage
+  let sx = 0, sy = 0, land = null;
+  for (const [tt, amp] of [[TL.fall1[1], 12], [TL.fall2[1], 22], [TL.fall3[1], 36]]) {
+    const d = t - tt; if (d >= 0 && d < .7) { const k = Math.exp(-d * 9) * amp; sx = Math.sin(d * 71) * k * .5; sy = Math.cos(d * 53) * k; land = { d, amp }; }
+  }
+  background(t, c);
+  ctx.translate(sx, sy);
+
+  const endP = prog(t, TL.end, .55), endE = eio(endP), sceneA = 1 - endE;
+  dust(t, c, clamp(t / .5) * (0.7 + .3 * sceneA));
+
+  /* ----- règle ----- */
+  const rulerIn = eOut(prog(t, TL.fall1[0], .35));
+  const dimQ = (t >= TL.q2 && t < TL.fall2[0]) || (t >= TL.q3 && t < TL.fall3[0]) ? .28 : 1;
+  const dimT = t >= TL.q2 && t < TL.fall2[0] ? prog(t, TL.q2, .3) : t >= TL.q3 && t < TL.fall3[0] ? prog(t, TL.q3, .3) : 1;
+  const rA = rulerIn * lerp(1, dimQ, dimT) * sceneA;
+  if (rA > 0) {
+    if (c.falling) { const N = 5; for (let j = 0; j < N; j++) ruler(cam(t - j / (FPS * N) * .9), rA / N * 1.35, j === 0); }
+    else ruler(c, rA, true);
+    if (t >= TL.fall1[1]) marker(c, T1, rA); if (t >= TL.fall2[1]) marker(c, T2, rA); if (t >= TL.fall3[1]) marker(c, T3, rA);
+    if (t >= TL.fall3[0] && t < TL.fall3[1] + .2) {
+      const la = rA * (1 - prog(t, TL.fall3[1] - .35, .35));
+      landmark(c, 2000, 'ROME ANTIQUE', la); landmark(c, 4500, 'PYRAMIDES DE GIZEH', la);
+      landmark(c, 11000, 'DÉBUTS DE L’AGRICULTURE', la); landmark(c, 20000, 'LASCAUX', la);
+    }
+    // curseur de lecture + compteur
+    if (c.falling) {
+      const a = rA / lerp(1, dimQ, dimT) * clamp(c.u * 8) * clamp((1 - c.u) * 14);
+      ctx.globalAlpha = a; ctx.fillStyle = C.red;
+      ctx.beginPath(); ctx.moveTo(XR + 14, YF); ctx.lineTo(XR + 52, YF - 20); ctx.lineTo(XR + 52, YF + 20); ctx.fill();
+      ctx.fillRect(XR + 52, YF - 2, W - XR - 52, 4);
+      ctx.fillStyle = C.ivory; ctx.font = font(900, t >= TL.fall3[0] ? 120 : 132); if ('letterSpacing' in ctx) ctx.letterSpacing = '-3px';
+      ctx.fillText(depthText(c.F), XR + 86, YF - 34); if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /* ----- point « maintenant » : présent dès la première image ----- */
+  const hookDot = { x: 126, y: 672 };
+  const mv = eio(prog(t, TL.fall1[0] - .15, .5));
+  let dotX = lerp(hookDot.x, XR, mv), dotY = lerp(hookDot.y, yOf(0, c), mv), dotR = lerp(15, 16, mv);
+  const endDot = logoDot();
+  if (endP > 0) { dotX = lerp(dotX, endDot.x, endE); dotY = lerp(dotY, endDot.y, endE); dotR = lerp(dotR, endDot.r, endE); }
+  const pulse = .5 + .5 * Math.sin(t * 5.2);
+  if (dotY > -40) {
+    ctx.globalAlpha = .22 * (1 - pulse) * (endP > 0 ? sceneA : 1); ctx.strokeStyle = C.red; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(dotX, dotY, dotR + 8 + pulse * 22, 0, 7); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(dotX, dotY, dotR, 0, 7); ctx.fill();
+    if (mv >= 1 && rA > 0 && endP === 0) { ctx.globalAlpha = rA * clamp((dotY - 150) / 80) * (c.falling ? clamp(1 - c.u * 6) + clamp((c.u - .86) * 8) : 1); ctx.fillStyle = C.red; ctx.font = font(700, 24, MONO); if ('letterSpacing' in ctx) ctx.letterSpacing = '4px'; ctx.fillText('MAINTENANT', XR + 34, dotY + 8); if ('letterSpacing' in ctx) ctx.letterSpacing = '0px'; ctx.globalAlpha = 1; }
+  }
+
+  /* ----- onde de choc + flash ----- */
+  if (land) {
+    const p = land.d / .7; ctx.globalAlpha = (1 - p) * .8; ctx.strokeStyle = C.red; ctx.lineWidth = 6 * (1 - p) + 1;
+    ctx.beginPath(); ctx.arc(XR, YF, eOut(p) * land.amp * 24, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+  }
+
+  /* ----- SCÈNE 0 : accroche ----- */
+  const X0 = 110, o0 = TL.fall1[0] - .12;
+  if (t < TL.fall1[0] + .4) {
+    kinetic('IL Y A', X0 + 44, 684, font(700, 34, MONO), t, 0, { ls: '6px', out: o0, color: C.mist, dur: .2, per: .01, rise: 10, s0: 1 });
+    const fs = fit('1 000 000', 900, DISPLAY, 860, 230);
+    kinetic('1 000 000', X0 - 8, 900, font(900, fs), t, .0, { ls: '-6px', out: o0, per: .035, dur: .3, rise: 150, s0: 1.7 });
+    wipe('DE SECONDES', X0, 1000, font(800, 76), t, .55, { out: o0, ls: '2px' });
+    kinetic('C’ÉTAIT QUAND ?', X0, 1180, font(900, 104), t, TL.hookQ, { out: o0, color: C.red, ls: '-2px', per: .03 });
+  }
+
+  /* ----- blocs « résultat » (alignés sur la ligne de lecture) ----- */
+  const XT = XR + 86;
+  function result(t0, sub0, out, eq, big, small, sub, dim = 1) {
+    if (t < t0) return;
+    wipe(eq, XT + 4, YF - 190, font(500, 30, MONO), t, t0 + .1, { out, color: C.mist, alpha: dim });
+    ctx.font = font(900, 100); if ('letterSpacing' in ctx) ctx.letterSpacing = '-5px';
+    const fs = fit(big, 900, DISPLAY, 720, 215);
+    slam(big, XT, YF - 14, font(900, fs), t, t0, { out, alpha: dim }); if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    wipe(small, XT + 4, YF + 62, font(800, 52), t, t0 + .35, { out, color: C.red, alpha: dim });
+    wipe(sub, XT + 4, YF + 150, font(600, 40), t, sub0, { out, alpha: dim * .92 });
+    // trait de liaison marqueur → chiffre
+    const lp = eOut(prog(t, t0, .3)) * (1 - prog(t, out, .2)); ctx.globalAlpha = lp * dim; ctx.fillStyle = C.red; ctx.fillRect(XR + 12, YF - 2, 56 * lp, 4); ctx.globalAlpha = 1;
+  }
+  result(TL.fall1[1], TL.sub1, TL.out1, '1 000 000 S =', '11 JOURS', 'ET DEMI.', 'Moins de deux semaines.');
+  result(TL.fall2[1], TL.sub2, TL.out2, '1 000 000 000 S =', '31 ANS', 'ET 8 MOIS.', 'Peut-être avant ta naissance.');
+  const dim3 = lerp(1, .32, prog(t, TL.pix1, .4)) * sceneA;
+  if (endP < 1) result(TL.fall3[1], TL.sub3, 1e9, '1 000 000 000 000 S =', '31 688 ANS', 'PLUS DE 300 SIÈCLES.', 'Lascaux n’est pas encore peinte.', dim3);
+
+  /* ----- questions (les zéros s'ajoutent) ----- */
+  function question(t0, zt, out, lead, base, groups) {
+    if (t < t0 || t > out + .5) return;
+    kinetic(lead, X0, 800, font(900, 96), t, t0, { out, ls: '-2px' });
+    const full = base + ' 000'.repeat(groups), fs = fit(full, 900, DISPLAY, 860, 150);
+    ctx.font = font(900, fs); let x = X0 - 4;
+    const eo = eIn(prog(t, out, .32));
+    const parts = [base, ...Array(groups).fill(' 000')];
+    parts.forEach((s, i) => {
+      const ts = i === 0 ? t0 + .15 : zt + (i - 1) * .14; const w = ctx.measureText(s).width;
+      if (t >= ts) {
+        const p = prog(t, ts, .3), e = eBack(p), hot = i > 0 ? 1 - prog(t, ts + .25, .5) : 0;
+        ctx.save(); ctx.globalAlpha = clamp(p * 4) * (1 - eo); ctx.translate(x + w / 2, 960 - eo * 300); ctx.scale(lerp(1.5, 1, e), lerp(1.5, 1, e) * (1 + eo * 1.5));
+        ctx.fillStyle = hot > 0 ? mix(C.ivory, C.red, hot) : C.ivory; ctx.font = font(900, fs); ctx.fillText(s, -w / 2, 0); ctx.restore();
+      }
+      x += w;
+    });
+    ctx.globalAlpha = 1;
+    kinetic('DE SECONDES ?', X0, 1090, font(900, 96), t, zt + groups * .14 + .15, { out, color: C.red, ls: '-2px' });
+    // barre de tension
+    const tp = prog(t, zt, out - zt - .1); if (tp > 0 && eo < 1) { ctx.globalAlpha = (1 - eo); ctx.fillStyle = C.graphite; ctx.fillRect(X0, 1150, 860, 6); ctx.fillStyle = C.red; ctx.fillRect(X0, 1150, 860 * eIn(tp) ** .5, 6); ctx.globalAlpha = 1; }
+  }
+  question(TL.q2, TL.zeros2, TL.silence2 + .18, 'ET IL Y A', '1 000 000', 1);
+  question(TL.q3, TL.zeros3, TL.silence3 + .28, 'ET IL Y A', '1 000 000 000', 1);
+
+  /* ----- chute finale : « le même pixel » ----- */
+  if (t >= TL.pix1 && endP < 1) {
+    const y0 = yOf(0, c), a = sceneA * sceneA;
+    const lp = eOut(prog(t, TL.pix1, .4));
+    ctx.globalAlpha = a * lp; ctx.strokeStyle = C.red; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(XR, y0, 44 + 6 * Math.sin(t * 7), 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(XR + 44, y0); ctx.lineTo(XR + 44 + 120 * lp, y0 + 150 * lp); ctx.stroke(); ctx.globalAlpha = 1;
+    wipe('1 MILLION ET 1 MILLIARD ?', XT + 90, y0 + 190, font(700, 31, MONO), t, TL.pix1 + .2, { color: C.ivory, alpha: a });
+    kinetic('ICI.', XT + 86, y0 + 300, font(900, 108), t, TL.pix2 - .55, { color: C.red, alpha: a, ls: '-2px' });
+    kinetic('LE MÊME PIXEL.', XT + 86, y0 + 410, font(900, 92), t, TL.pix2, { alpha: a, ls: '-3px', per: .035 });
+  }
+
+  /* ----- carton de fin ----- */
+  if (endP > 0) {
+    logo(540, 700, 300, prog(t, TL.end + .25, .9), 0);
+    const ws = 150; ctx.font = font(900, ws); if ('letterSpacing' in ctx) ctx.letterSpacing = '10px';
+    const ww = ctx.measureText('VERTIGE').width - 10; if ('letterSpacing' in ctx) ctx.letterSpacing = '0px';
+    kinetic('VERTIGE', 540 - ww / 2, 1150, font(900, ws), t, TL.word, { ls: '10px', per: .05, rise: -120, s0: 1.4 });
+    ctx.font = font(600, 44); const tg = 'Les chiffres qui donnent le vertige.', tw = ctx.measureText(tg).width;
+    wipe(tg, 540 - tw / 2, 1240, font(600, 44), t, TL.tag, { color: C.mist });
+    const cp = eOut5(prog(t, TL.cta, .5));
+    if (cp > 0) {
+      const l1 = 'ENVOIE ÇA À QUELQU’UN', l2 = 'QUI CONFOND LES DEUX.';
+      ctx.globalAlpha = cp; ctx.strokeStyle = C.red; ctx.lineWidth = 3;
+      const bw = 760 * cp, bx = 540 - bw / 2; ctx.strokeRect(bx, 1370, bw, 170);
+      ctx.fillStyle = C.ivory; ctx.font = font(700, 34, MONO); ctx.textAlign = 'center';
+      ctx.fillText(l1, 540, 1442 + (1 - cp) * 20); ctx.fillText(l2, 540, 1496 + (1 - cp) * 20); ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    }
+  }
+
+  /* ----- finition : flash, vignette, grain ----- */
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  if (land && land.d < .25) { ctx.globalAlpha = (1 - land.d / .25) * .16 * (land.amp / 36); ctx.fillStyle = C.ivory; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  const v = ctx.createRadialGradient(W / 2, H / 2, 500, W / 2, H / 2, 1250); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  const r = rng(Math.round(t * FPS) + 1); ctx.globalAlpha = .055; ctx.globalCompositeOperation = 'overlay';
+  ctx.drawImage(grain, -r() * 200, -r() * 200, W + 400, H + 400); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+  const fo = prog(t, DURATION - .2, .2); if (fo > 0) { ctx.globalAlpha = fo * .0; ctx.fillStyle = C.ink; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+}
+function logoDot() { return { x: 540, y: 700 + 300 * .62, r: 300 * .075 }; }
+function mix(a, b, k) { const pa = [1, 3, 5].map(i => parseInt(a.substr(i, 2), 16)), pb = [1, 3, 5].map(i => parseInt(b.substr(i, 2), 16)); return `rgb(${pa.map((v, i) => Math.round(lerp(v, pb[i], k))).join(',')})`; }
+
+/* ---------- couverture ---------- */
+function renderCover() {
+  const c = { F: T2, g: 1, falling: false, u: 0 };
+  ctx.setTransform(1, 0, 0, 1, 0, 0); background(0, c); dust(9, c, 1);
+  ruler(c, .9, true); marker(c, T2, 1);
+  ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(XR, yOf(0, c), 16, 0, 7); ctx.fill();
+  ctx.font = font(700, 24, MONO); ctx.letterSpacing = '4px'; ctx.fillText('MAINTENANT', XR + 34, yOf(0, c) + 8);
+  ctx.fillStyle = C.mist; ctx.fillText('VERTIGE · N°01', XR + 86, 560); ctx.letterSpacing = '-5px';
+  ctx.fillStyle = C.ivory; ctx.font = font(900, 150); ctx.fillText('1 MILLIARD', XR + 80, 760);
+  ctx.letterSpacing = '-2px'; ctx.font = font(900, 92); ctx.fillText('DE SECONDES,', XR + 84, 870);
+  ctx.fillStyle = C.red; ctx.font = font(900, 112); ctx.fillText('C’ÉTAIT', XR + 84, 1010); ctx.fillText('QUAND ?', XR + 84, 1125); ctx.letterSpacing = '0px';
+  ctx.fillRect(XR + 12, YF - 2, 56, 4);
+  const v = ctx.createRadialGradient(W / 2, H / 2, 500, W / 2, H / 2, 1250); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.55)'); ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  ctx.globalAlpha = .055; ctx.globalCompositeOperation = 'overlay'; ctx.drawImage(grain, 0, 0, W + 400, H + 400); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+
+window.ready = Promise.all([document.fonts.load('500 20px JBM'), document.fonts.load('700 20px JBM'), document.fonts.load('900 20px "Inter Display"'), document.fonts.load('800 20px "Inter Display"'), document.fonts.load('600 20px "Inter Display"')]).then(() => { draw(0); return true; });
+if (location.search.includes('preview')) { document.body.classList.add('preview'); const s = performance.now(); (function loop() { draw(((performance.now() - s) / 1000) % DURATION); requestAnimationFrame(loop); })(); }
+</script>
+</body>
+</html>
