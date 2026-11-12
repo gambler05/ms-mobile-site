@@ -1,0 +1,9 @@
+[
+  {"t": 0.15, "dit": "Une corde fait le tour de la Terre.", "st": "Une corde fait le tour de la Terre."},
+  {"t": 3.35, "dit": "On lui ajoute un mètre. Elle se soulève de combien ?", "st": "On lui ajoute un mètre.\nElle se soulève de combien ?"},
+  {"t": 7.35, "dit": "Un cheveu ? Une feuille ? Rien du tout ?", "st": "Un cheveu ? Une feuille ? Rien du tout ?"},
+  {"t": 10.75, "dit": "Seize centimètres. Partout, tout autour de la planète.", "st": "16 centimètres.\nPartout, tout autour de la planète."},
+  {"t": 15.25, "dit": "Et autour d'un ballon de foot ?", "st": "Et autour d'un ballon de foot ?"},
+  {"t": 18.4, "dit": "Seize centimètres aussi.", "st": "16 centimètres aussi."},
+  {"t": 22.6, "dit": "La taille ne compte pas. Un mètre de plus, c'est toujours seize centimètres.", "st": "La taille ne compte pas. Un mètre de plus,\nc'est toujours 16 centimètres."}
+]

@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>VERTIGE — Reel 03</title>
+<style>
+@font-face{font-family:"JBM";font-weight:500;src:url(../reel-01/fonts/jetbrains-mono-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"JBM";font-weight:700;src:url(../reel-01/fonts/jetbrains-mono-latin-700-normal.woff2) format("woff2")}
+html,body{margin:0;background:#000}
+canvas{display:block;width:1080px;height:1920px}
+body.preview canvas{width:auto;height:100vh;margin:0 auto}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* ============================================================
+   VERTIGE — Reel 03 « La corde autour de la Terre »
+   Moteur déterministe : renderFrame(n) dessine l'image n (30 i/s).
+   Ouvrir avec ?preview pour une lecture temps réel.
+   ============================================================ */
+const W = 1080, H = 1920, FPS = 30, DURATION = 29.5;
+const C = { ink:'#0A0A0F', ink2:'#14141C', ivory:'#F3EEE3', red:'#FF4A1C', mist:'#8B8B99', graphite:'#2A2A33' };
+const DISPLAY = '"Inter Display","Inter",sans-serif', MONO = '"JBM",monospace';
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const off = document.createElement('canvas'); off.width = W; off.height = H; const octx = off.getContext('2d');
+
+const TL = {
+  trace: [0.1, 1.3], add: 3.3, seg: 3.9, q: 5.0, out1: 6.6,
+  zoomIn: [6.8, 7.7], g: [7.4, 8.1, 8.8], gOut: 9.85, silence: 10.0,
+  lift: 10.4, sub3: 12.2, out3: 14.7,
+  zoomOut: [15.0, 15.7], q4: 15.2, morph: [15.7, 16.4], out4: 17.7,
+  lift2: 18.0, sub5: 19.6,
+  fin: 22.5, formula: 23.6,
+  end: 26.2, word: 26.9, tag: 27.45, cta: 27.9,
+};
+const R0 = 330, RBALL = 150, RBIG = 60000, GROUND = 1250, PXCM = 22;          // sol et échelle de la règle (px par cm)
+const GAP = 100 / (2 * Math.PI);                                             // 15,9 cm
+const LIFT = GAP * PXCM, LIFT2 = GAP / 11 * RBALL;                           // ballon : rayon 11 cm
+const XR = 200;
+
+/* ---------- utilitaires ---------- */
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const prog = (t, t0, d) => clamp((t - t0) / d);
+const eio = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const eOut = x => 1 - Math.pow(1 - x, 3);
+const eOut5 = x => 1 - Math.pow(1 - x, 5);
+const eIn = x => x * x * x;
+const eBack = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const nbsp = n => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const font = (w, s, fam = DISPLAY) => `${w} ${s}px ${fam}`;
+const LS = v => { if ('letterSpacing' in ctx) ctx.letterSpacing = v; };
+function fit(text, w, fam, maxW, maxS, ls = 0) { ctx.font = font(w, 100, fam); LS('0px'); const m = ctx.measureText(text).width + ls * text.length; return Math.min(maxS, 100 * maxW / m); }
+
+/* ---------- géométrie de la scène ---------- */
+function geom(t) {
+  let R = R0, top = 960 - R0, lift = 0, z = 0, ball = 0;
+  if (t >= TL.zoomIn[0] && t < TL.zoomOut[1]) {
+    z = t < TL.zoomOut[0] ? eio(prog(t, TL.zoomIn[0], TL.zoomIn[1] - TL.zoomIn[0])) : 1 - eio(prog(t, TL.zoomOut[0], TL.zoomOut[1] - TL.zoomOut[0]));
+    R = R0 * Math.pow(RBIG / R0, z); top = lerp(960 - R0, GROUND, z);
+    if (t >= TL.lift) lift = LIFT * eBack(prog(t, TL.lift, .5)) * (t >= TL.zoomOut[0] ? Math.pow(z, 6) : 1);
+  } else if (t >= TL.zoomOut[1]) {
+    ball = eio(prog(t, TL.morph[0], TL.morph[1] - TL.morph[0]));
+    R = lerp(R0, RBALL, ball); top = lerp(960, 1000, ball) - R;
+    if (t >= TL.lift2) lift = LIFT2 * eBack(prog(t, TL.lift2, .55));
+  }
+  return { R, cx: 540, cy: top + R, top, lift, z, ball };
+}
+
+/* ---------- fond, poussières, grain ---------- */
+const grain = document.createElement('canvas'); grain.width = 360; grain.height = 640;
+{ const g = grain.getContext('2d'), id = g.createImageData(360, 640), r = rng(7);
+  for (let i = 0; i < id.data.length; i += 4) { const v = r() * 255; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; } g.putImageData(id, 0, 0); }
+const STARS = (() => { const r = rng(303); return Array.from({ length: 170 }, () => ({ a: r() * 6.283, d: .08 + r() * 1.25, z: .3 + r() * 1.5, s: .8 + r() * 2.2, red: r() < .06, tw: r() * 6 })); })();
+function background(t, G) {
+  ctx.fillStyle = C.ink; ctx.fillRect(0, 0, W, H);
+  const warm = clamp(G.z + G.ball * .6), cyG = lerp(960, 900, G.z);
+  const g = ctx.createRadialGradient(540, cyG, 60, 540, cyG, 1300);
+  g.addColorStop(0, `rgba(${Math.round(34 + 26 * warm)},${Math.round(30 + 3 * warm)},${Math.round(48 - 14 * warm)},1)`); g.addColorStop(1, 'rgba(10,10,15,1)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+}
+// étoiles en parallaxe : elles fuient vers l'extérieur pendant les zooms
+function stars(t, G, alpha) {
+  const zs = Math.log(G.R / R0), zprev = Math.log(geom(t - 1 / FPS).R / R0), v = (zs - zprev) * FPS;
+  for (const s of STARS) {
+    const d = s.d * 900 * Math.exp(zs * .22 * s.z), x = 540 + Math.cos(s.a + t * .01 * s.z) * d, y = 960 + Math.sin(s.a + t * .01 * s.z) * d * 1.5;
+    if (x < -50 || x > W + 50 || y < -50 || y > H + 50) continue;
+    const len = Math.min(260, Math.abs(v) * s.z * 34);
+    ctx.globalAlpha = alpha * (.14 + .34 * (s.z / 1.8)) * (.7 + .3 * Math.sin(t * 2 + s.tw));
+    ctx.strokeStyle = ctx.fillStyle = s.red ? C.red : C.ivory;
+    if (len > 3) { const ux = (x - 540) / (d || 1), uy = (y - 960) / (d * 1.5 || 1); ctx.lineWidth = s.s; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - ux * len * Math.sign(v), y - uy * len * Math.sign(v)); ctx.stroke(); }
+    else { ctx.beginPath(); ctx.arc(x, y, s.s * .8, 0, 7); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- le globe, le ballon, la corde ---------- */
+function planet(t, G, alpha) {
+  const { cx, cy, R } = G;
+  // disque
+  ctx.globalAlpha = alpha; ctx.fillStyle = '#15151E'; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fill();
+  if (G.z < .98) {
+    const sh = ctx.createRadialGradient(cx - R * .35, cy - R * .4, R * .05, cx, cy, R); sh.addColorStop(0, 'rgba(70,64,92,.9)'); sh.addColorStop(1, 'rgba(14,14,20,0)');
+    ctx.globalAlpha = alpha * (1 - G.z); ctx.fillStyle = sh; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.fill();
+  }
+  // liseré lumineux de l'horizon
+  ctx.globalAlpha = alpha * .9; ctx.strokeStyle = C.mist; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.stroke();
+  const wire = alpha * (1 - clamp(G.z * 4)) ;
+  if (wire > 0) {
+    ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, R, 0, 7); ctx.clip(); ctx.strokeStyle = C.ivory; ctx.lineWidth = 1.6;
+    // fil de fer du globe (méridiens qui tournent, parallèles inclinés)
+    const ga = wire * (1 - G.ball);
+    if (ga > 0) {
+      const rot = t * .45, tilt = .32;
+      for (let k = 0; k < 6; k++) { const a = rot + k * Math.PI / 6, s = Math.sin(a); ctx.globalAlpha = ga * (.10 + .22 * Math.abs(Math.cos(a))); ctx.beginPath(); ctx.ellipse(cx, cy, Math.max(.5, R * Math.abs(s)), R, 0, 0, 7); ctx.stroke(); }
+      for (const lat of [-60, -30, 0, 30, 60]) { const l = lat * Math.PI / 180; ctx.globalAlpha = ga * (lat === 0 ? .34 : .2); ctx.beginPath(); ctx.ellipse(cx, cy - R * Math.sin(l) * Math.cos(tilt), R * Math.cos(l), R * Math.cos(l) * Math.sin(tilt), 0, 0, 7); ctx.stroke(); }
+    }
+    // motif du ballon
+    if (G.ball > 0) {
+      ctx.globalAlpha = wire * G.ball * .8; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+      const a0 = -Math.PI / 2 + t * .25, P = i => [cx + Math.cos(a0 + i * 2 * Math.PI / 5) * R * .34, cy + Math.sin(a0 + i * 2 * Math.PI / 5) * R * .34];
+      ctx.beginPath(); for (let i = 0; i < 5; i++) { const [x, y] = P(i); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.closePath(); ctx.fillStyle = 'rgba(243,238,227,.22)'; ctx.fill(); ctx.stroke();
+      for (let i = 0; i < 5; i++) {
+        const a = a0 + i * 2 * Math.PI / 5, [x, y] = P(i), mx = cx + Math.cos(a) * R * .68, my = cy + Math.sin(a) * R * .68;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(mx, my);
+        for (const s of [-1, 1]) { ctx.moveTo(mx, my); ctx.lineTo(cx + Math.cos(a + s * .42) * R * .9, cy + Math.sin(a + s * .42) * R * .9); ctx.lineTo(cx + Math.cos(a + s * .52) * R * 1.02, cy + Math.sin(a + s * .52) * R * 1.02); }
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+function rope(t, G, alpha) {
+  const { cx, cy, R } = G, Rr = R + 4 + G.lift;
+  const tr = eio(prog(t, TL.trace[0], TL.trace[1] - TL.trace[0])); if (tr <= 0) return;
+  const a0 = -Math.PI / 2, a1 = a0 + tr * Math.PI * 2;
+  ctx.lineCap = 'round'; ctx.globalAlpha = alpha; ctx.strokeStyle = C.ivory; ctx.lineWidth = 7;
+  ctx.beginPath(); ctx.arc(cx, cy, Rr, a0, a1); ctx.stroke();
+  if (G.z < .5) { ctx.globalAlpha = alpha * .55 * (1 - G.z * 2); ctx.strokeStyle = C.ink; ctx.lineWidth = 2; ctx.setLineDash([3, 13]); ctx.lineDashOffset = -t * 8; ctx.beginPath(); ctx.arc(cx, cy, Rr, a0, a1); ctx.stroke(); ctx.setLineDash([]); }
+  // le mètre ajouté
+  const sg = eBack(prog(t, TL.seg, .35)) * (1 - prog(t, TL.zoomIn[0] - .1, .3));
+  if (sg > 0 && t < TL.zoomIn[1]) { ctx.globalAlpha = alpha * clamp(sg * 2); ctx.strokeStyle = C.red; ctx.lineWidth = 7 + 9 * sg; ctx.beginPath(); ctx.arc(cx, cy, Rr, a0 + .22 - .13 * sg, a0 + .22 + .13 * sg); ctx.stroke(); }
+  ctx.lineCap = 'butt'; ctx.globalAlpha = 1;
+}
+function glowDot(x, y, r, a = 1) {
+  const g = ctx.createRadialGradient(x, y, r * .5, x, y, r * 5.5); g.addColorStop(0, 'rgba(255,74,28,.55)'); g.addColorStop(1, 'rgba(255,74,28,0)');
+  ctx.globalAlpha = a; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 5.5, 0, 7); ctx.fill();
+  ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+}
+
+/* ---------- la règle (en centimètres, depuis le sol) ---------- */
+function ruler(t, alpha) {
+  if (alpha <= 0) return; const grow = eOut5(prog(t, TL.zoomIn[1] - .25, .7)), top = 24 * grow;
+  ctx.strokeStyle = ctx.fillStyle = C.ivory; ctx.globalAlpha = alpha * .9; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(XR, GROUND); ctx.lineTo(XR, GROUND - top * PXCM); ctx.stroke();
+  for (let i = 0; i <= top; i++) {
+    const y = GROUND - i * PXCM, big = i % 5 === 0;
+    ctx.globalAlpha = alpha * (big ? .9 : .5); ctx.lineWidth = big ? 3 : 2; ctx.beginPath(); ctx.moveTo(XR, y); ctx.lineTo(XR + (big ? 70 : 20), y); ctx.stroke();
+    if (big) { ctx.globalAlpha = alpha * .7; ctx.font = font(500, 21, MONO); ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(i ? `${i} CM` : 'SOL', XR - 18, y); }
+  }
+  ctx.globalAlpha = 1; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+}
+
+/* ---------- typographie cinétique ---------- */
+function kinetic(text, x, y, fnt, t, t0, o = {}) {
+  const per = o.per ?? .028, dur = o.dur ?? .42, out = o.out ?? 1e9, col = o.color ?? C.ivory;
+  if (t < t0) return 0;
+  const eo = eIn(prog(t, out, .32)); if (eo >= 1) return 0;
+  ctx.font = fnt; ctx.textBaseline = 'alphabetic'; LS(o.ls ?? '0px');
+  let n = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]; if (ch === ' ') continue;
+    const cx = x + ctx.measureText(text.slice(0, i)).width;
+    const p = prog(t, t0 + n * per, dur), e = eBack(p); n++;
+    if (p <= 0) continue;
+    const cw = ctx.measureText(ch).width;
+    ctx.save();
+    ctx.globalAlpha = (o.alpha ?? 1) * clamp(p * 3) * (1 - eo);
+    ctx.translate(cx + cw / 2, y + (1 - e) * (o.rise ?? 70) - eo * (200 + n * 10));
+    ctx.scale(lerp(o.s0 ?? 1.25, 1, eOut(p)) * (1 - eo * .25), lerp(o.s0 ?? 1.25, 1, eOut(p)) * (1 + eo * 1.6));
+    ctx.fillStyle = col; ctx.fillText(ch, -cw / 2, 0);
+    ctx.restore();
+  }
+  const w = ctx.measureText(text).width; LS('0px'); ctx.globalAlpha = 1; return w;
+}
+function wipe(text, x, y, fnt, t, t0, o = {}) {
+  if (t < t0) return 0; const out = o.out ?? 1e9, eo = eIn(prog(t, out, .28)); if (eo >= 1) return 0;
+  ctx.font = fnt; LS(o.ls ?? '0px');
+  const w = ctx.measureText(text).width, p = eOut5(prog(t, t0, .55)), sz = parseFloat(fnt.match(/(\d+(\.\d+)?)px/)[1]);
+  ctx.save(); ctx.globalAlpha = (o.alpha ?? 1) * (1 - eo); ctx.translate(0, -eo * 120);
+  ctx.beginPath(); ctx.rect(x - 4, y - sz * 1.1, (w + 8) * p, sz * 1.5); ctx.clip();
+  ctx.fillStyle = o.color ?? C.ivory; ctx.fillText(text, x + (1 - p) * -24, y);
+  ctx.restore();
+  if (p < 1) { ctx.globalAlpha = 1 - p; ctx.fillStyle = C.red; ctx.fillRect(x + (w + 8) * p, y - sz * .95, 6, sz * 1.15); ctx.globalAlpha = 1; }
+  LS('0px'); return w;
+}
+function slam(text, x, y, fnt, t, t0, o = {}) {
+  if (t < t0) return; const out = o.out ?? 1e9, eo = eIn(prog(t, out, .3)); if (eo >= 1) return;
+  const p = prog(t, t0, .38), e = eBack(p), s = lerp(1.9, 1, e), A = (o.alpha ?? 1);
+  ctx.save(); ctx.font = fnt; LS(o.ls ?? '0px'); ctx.globalAlpha = A * clamp(p * 4) * (1 - eo);
+  ctx.translate(x, y - eo * 300); ctx.scale(s * (1 - eo * .2), s * (1 + eo * 1.4));
+  if (p < 1) { ctx.fillStyle = C.red; ctx.globalAlpha *= .8; ctx.fillText(text, (1 - p) * 26, 0); ctx.globalAlpha = A * clamp(p * 4); }
+  ctx.fillStyle = o.color ?? C.ivory; ctx.fillText(text, 0, 0);
+  const w = ctx.measureText(text).width; ctx.restore();
+  const sp = prog(t, t0 + .34, .75);
+  if (sp > 0 && sp < 1 && eo === 0) {
+    const sz = parseFloat(fnt.match(/(\d+(\.\d+)?)px/)[1]);
+    octx.setTransform(1, 0, 0, 1, 0, 0); octx.globalCompositeOperation = 'source-over'; octx.clearRect(0, 0, W, H);
+    octx.font = fnt; if ('letterSpacing' in octx) octx.letterSpacing = o.ls ?? '0px'; octx.fillStyle = '#fff'; octx.fillText(text, x, y);
+    const bx = x - 160 + (w + 320) * eio(sp), g = octx.createLinearGradient(bx - 110, 0, bx + 110, sz * .5);
+    g.addColorStop(0, 'rgba(255,74,28,0)'); g.addColorStop(.5, 'rgba(255,120,70,1)'); g.addColorStop(1, 'rgba(255,74,28,0)');
+    octx.globalCompositeOperation = 'source-in'; octx.fillStyle = g; octx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = A * .9; ctx.drawImage(off, 0, 0);
+  }
+  LS('0px'); ctx.globalAlpha = 1;
+}
+function logo(cx, cy, size, p) {
+  ctx.lineCap = 'butt'; ctx.lineJoin = 'miter'; ctx.strokeStyle = C.ivory;
+  let y = cy - size * .52, s = size;
+  for (let i = 0; i < 4; i++) {
+    const q = eOut5(clamp(p * 4 - i * .75)); if (q > 0) { ctx.globalAlpha = q; ctx.lineWidth = Math.max(3, s * .13); ctx.beginPath(); ctx.moveTo(cx - s * .5, y - (1 - q) * 80); ctx.lineTo(cx, y + s * .46 - (1 - q) * 80); ctx.lineTo(cx + s * .5, y - (1 - q) * 80); ctx.stroke(); }
+    y += s * .40; s *= .58;
+  }
+  ctx.globalAlpha = 1;
+}
+const logoDot = () => ({ x: 540, y: 700 + 300 * .62, r: 300 * .075 });
+// double flèche de cote
+function dim(x, y0, y1, a) {
+  if (a <= 0 || Math.abs(y1 - y0) < 8) return;
+  ctx.globalAlpha = a; ctx.strokeStyle = ctx.fillStyle = C.red; ctx.lineWidth = 4;
+  ctx.beginPath(); ctx.moveTo(x, y0); ctx.lineTo(x, y1); ctx.stroke();
+  for (const [y, s] of [[y0, 1], [y1, -1]]) { ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 11, y + s * 20); ctx.lineTo(x + 11, y + s * 20); ctx.fill(); }
+  ctx.globalAlpha = 1;
+}
+
+/* ============================================================
+   IMAGE
+   ============================================================ */
+function renderFrame(n) { draw(n / FPS); }
+function draw(t) {
+  const G = geom(t);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.globalCompositeOperation = 'source-over';
+  let sx = 0, sy = 0, land = null;
+  for (const [tt, amp] of [[TL.seg, 8], [TL.lift + .12, 30], [TL.lift2 + .14, 34]]) {
+    const d = t - tt; if (d >= 0 && d < .7) { const k = Math.exp(-d * 9) * amp; sx = Math.sin(d * 71) * k * .5; sy = Math.cos(d * 53) * k; land = { d, amp }; }
+  }
+  background(t, G); ctx.translate(sx, sy);
+  const endP = prog(t, TL.end, .55), endE = eio(endP), sceneA = 1 - endE;
+  const finDim = lerp(1, .38, prog(t, TL.fin, .4));
+  stars(t, G, clamp(t / .4) * (.6 + .4 * sceneA));
+
+  /* ----- planète / ballon / corde ----- */
+  const pA = sceneA * sceneA * finDim;
+  if (pA > 0) {
+    // zone soulevée, teintée
+    if (G.lift > 2) {
+      const Rr = G.R + 4 + G.lift; ctx.save(); ctx.beginPath(); ctx.arc(G.cx, G.cy, Rr, 0, Math.PI * 2); ctx.moveTo(G.cx + G.R, G.cy); ctx.arc(G.cx, G.cy, G.R, 0, Math.PI * 2); ctx.clip('evenodd');
+      const gg = ctx.createRadialGradient(G.cx, G.cy, G.R, G.cx, G.cy, Rr); gg.addColorStop(0, 'rgba(255,74,28,.03)'); gg.addColorStop(1, 'rgba(255,74,28,.26)');
+      ctx.globalAlpha = pA; ctx.fillStyle = gg; ctx.fillRect(0, 0, W, H); ctx.restore();
+    }
+    planet(t, G, pA); rope(t, G, pA);
+  }
+  ruler(t, Math.pow(G.z, 3) * sceneA);
+
+  /* ----- onde de choc ----- */
+  if (land && land.amp > 10) {
+    const p = land.d / .7, y = G.z > .5 ? GROUND - G.lift : G.cy;
+    if (G.z > .5) { ctx.globalAlpha = (1 - p) * .7; ctx.fillStyle = C.red; ctx.fillRect(0, y - 3 - p * 26, W, 2); ctx.fillRect(0, y + 3 + p * 26, W, 2); }
+    else for (let i = 0; i < 2; i++) { const q = clamp(p * (1 + i * .45)); ctx.globalAlpha = (1 - q) * (i ? .35 : .8); ctx.strokeStyle = C.red; ctx.lineWidth = 6 * (1 - q) + 1; ctx.beginPath(); ctx.arc(G.cx, G.cy, G.R + G.lift + eOut(q) * 260, 0, 7); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ----- SCÈNE 0 : la corde fait le tour ----- */
+  const X0 = 110;
+  if (t < TL.add + .4) {
+    kinetic('UNE CORDE', X0 + 44, 330, font(700, 34, MONO), t, 0, { ls: '6px', out: TL.add - .25, color: C.mist, dur: .2, per: .008, rise: 10, s0: 1 });
+    kinetic('FAIT LE TOUR', X0, 440, font(900, 104), t, .05, { ls: '-3px', out: TL.add - .25, per: .03, dur: .32, rise: 110, s0: 1.5 });
+    kinetic('DE LA TERRE.', X0, 548, font(900, 104), t, .45, { ls: '-3px', out: TL.add - .2, per: .03, dur: .32, rise: 110, s0: 1.5 });
+    const tr = eio(prog(t, TL.trace[0], TL.trace[1] - TL.trace[0])), eo = eIn(prog(t, TL.add - .2, .3));
+    if (eo < 1) { ctx.globalAlpha = (1 - eo) * clamp(t * 4 + .3); ctx.textAlign = 'center'; ctx.fillStyle = tr >= 1 ? C.ivory : C.mist; ctx.font = font(700, 54, MONO); LS('2px'); ctx.fillText(`${nbsp(40075 * tr)} KM`, 540, 1440); LS('0px'); ctx.textAlign = 'left'; ctx.globalAlpha = 1; }
+  }
+  /* ----- SCÈNE 1 : on ajoute un mètre ----- */
+  if (t >= TL.add && t < TL.zoomIn[0] + .5) {
+    kinetic('ON LUI AJOUTE', X0, 440, font(900, 96), t, TL.add, { ls: '-2px', out: TL.out1 });
+    slam('1 MÈTRE.', X0 - 4, 580, font(900, 150), t, TL.seg, { out: TL.out1, ls: '-4px' });
+    const qs = fit('ELLE SE SOULÈVE', 900, DISPLAY, 860, 100, -2);
+    kinetic('ELLE SE SOULÈVE', X0, 1440, font(900, qs), t, TL.q, { out: TL.out1, color: C.red, ls: '-2px', per: .028 });
+    kinetic('DE COMBIEN ?', X0, 1440 + qs * 1.08, font(900, qs), t, TL.q + .3, { out: TL.out1, color: C.red, ls: '-2px', per: .028 });
+  }
+  /* ----- SCÈNE 2 : les paris ----- */
+  const XT = XR + 90;
+  if (t >= TL.g[0] && t < TL.lift) {
+    ['UN CHEVEU ?', 'UNE FEUILLE ?', 'RIEN DU TOUT ?'].forEach((s, i) => {
+      const y = 560 + i * 130, t0 = TL.g[i], st = eOut5(prog(t, t0 + .45, .3)), fnt = font(900, 88);
+      const w = kinetic(s, XT, y, fnt, t, t0, { out: TL.gOut, ls: '-2px', color: st > .5 ? C.mist : C.ivory, per: .022 });
+      const eo = eIn(prog(t, TL.gOut, .32));
+      if (st > 0 && eo < 1) { ctx.globalAlpha = 1 - eo; ctx.fillStyle = C.red; ctx.fillRect(XT - 12, y - 36 - eo * 200, (w + 24) * st, 8); ctx.globalAlpha = 1; }
+    });
+    const tp = prog(t, TL.g[2], TL.silence - TL.g[2]), eo = eIn(prog(t, TL.gOut, .3));
+    if (tp > 0 && eo < 1) { ctx.globalAlpha = 1 - eo; ctx.fillStyle = C.graphite; ctx.fillRect(XT, 950, 700, 6); ctx.fillStyle = C.red; ctx.fillRect(XT, 950, 700 * Math.sqrt(eIn(tp)), 6); ctx.globalAlpha = 1; }
+  }
+  /* ----- SCÈNE 3 : 16 cm ----- */
+  if (t >= TL.lift && t < TL.zoomOut[1]) {
+    const o = TL.out3, t0 = TL.lift + .12;
+    wipe('+ 1 M DE CORDE =', XT + 4, 440, font(500, 30, MONO), t, t0 + .1, { out: o, color: C.mist });
+    slam('16 CM', XT, 640, font(900, 215), t, t0, { out: o, ls: '-6px' });
+    wipe('PARTOUT. TOUT AUTOUR.', XT + 4, 716, font(800, 52), t, t0 + .4, { out: o, color: C.red });
+    wipe('Assez pour glisser la main dessous.', XT + 4, 800, font(600, 40), t, TL.sub3, { out: o, alpha: .92 });
+    const a = clamp(G.lift / LIFT) * (1 - prog(t, o, .25));
+    dim(640, GROUND - G.lift + 8, GROUND - 6, a);
+    ctx.globalAlpha = a * eOut(prog(t, t0 + .3, .4)); ctx.fillStyle = C.red; ctx.font = font(700, 40, MONO); ctx.fillText('15,9 CM', 668, GROUND - G.lift / 2 + 14);
+    ctx.fillStyle = C.mist; ctx.font = font(500, 22, MONO); LS('3px'); ctx.fillText('LA CORDE', 668, GROUND - G.lift - 22); ctx.fillText('LE SOL', 668, GROUND + 42); LS('0px'); ctx.globalAlpha = 1;
+  }
+  /* ----- SCÈNE 4 : et un ballon ? ----- */
+  if (t >= TL.q4 && t < TL.lift2 + .4) {
+    kinetic('ET AUTOUR', X0, 400, font(900, 96), t, TL.q4, { out: TL.out4, ls: '-2px' });
+    const qs = fit('D’UN BALLON DE FOOT ?', 900, DISPLAY, 860, 96, -2);
+    kinetic('D’UN BALLON DE FOOT ?', X0, 400 + qs * 1.25, font(900, qs), t, TL.q4 + .3, { out: TL.out4, color: C.red, ls: '-2px', per: .025 });
+    const tp = prog(t, TL.morph[1], TL.out4 - TL.morph[1] - .1), eo = eIn(prog(t, TL.out4, .3));
+    if (tp > 0 && eo < 1) { ctx.globalAlpha = 1 - eo; ctx.fillStyle = C.graphite; ctx.fillRect(X0, 540, 860, 6); ctx.fillStyle = C.red; ctx.fillRect(X0, 540, 860 * Math.sqrt(eIn(tp)), 6); ctx.globalAlpha = 1; }
+  }
+  /* ----- SCÈNE 5 : 16 cm aussi ----- */
+  if (t >= TL.lift2 && endP < 1) {
+    const t0 = TL.lift2 + .14, a = sceneA * sceneA;
+    const fs = fit('16 CM AUSSI.', 900, DISPLAY, 860, 170, -5);
+    slam('16 CM AUSSI.', X0 - 4, 1515, font(900, fs), t, t0, { ls: '-5px', alpha: a * finDim, out: TL.fin - .2 });
+    const da = clamp(G.lift / LIFT2) * a * finDim;
+    dim(G.cx, G.cy - G.R - G.lift + 10, G.cy - G.R - 8, da);
+    ctx.globalAlpha = da * eOut(prog(t, t0 + .3, .4)); ctx.fillStyle = C.red; ctx.font = font(700, 38, MONO); ctx.fillText('15,9 CM', G.cx + 28, G.cy - G.R - G.lift / 2 + 12);
+    ctx.fillStyle = C.mist; ctx.font = font(500, 22, MONO); LS('3px'); ctx.textAlign = 'center'; ctx.fillText('BALLON : 22 CM', G.cx, G.cy + G.R + 46); ctx.textAlign = 'left'; LS('0px'); ctx.globalAlpha = 1;
+    wipe('La corde ne le touche plus du tout.', X0, 400, font(600, 42), t, TL.sub5, { out: TL.fin - .2, alpha: .92 * a });
+  }
+  /* ----- SCÈNE 6 : la taille ne compte pas ----- */
+  if (t >= TL.fin && endP < 1) {
+    const a = sceneA * sceneA;
+    kinetic('LA TAILLE', X0, 400, font(900, 112), t, TL.fin, { ls: '-3px', alpha: a });
+    kinetic('NE COMPTE PAS.', X0, 520, font(900, 112), t, TL.fin + .3, { ls: '-3px', alpha: a, per: .03 });
+    const fs = fit('1 M ÷ 2π = 15,9 CM', 700, MONO, 860, 64);
+    wipe('1 M ÷ 2π = 15,9 CM', X0, 1480, font(700, fs, MONO), t, TL.formula, { color: C.red, alpha: a });
+    wipe('Planète ou ballon : même résultat.', X0, 1545, font(600, 40), t, TL.formula + .5, { alpha: .92 * a });
+  }
+
+  /* ----- le point vermillon : il trace la corde, puis mesure ----- */
+  {
+    const tr = eio(prog(t, TL.trace[0], TL.trace[1] - TL.trace[0])), ang = -Math.PI / 2 + tr * Math.PI * 2, Rr = G.R + 4 + G.lift;
+    let x = G.cx + Math.cos(ang) * Rr, y = G.cy + Math.sin(ang) * Rr, r = 15;
+    if (t < TL.trace[0]) { x = 126; y = 318; }
+    else if (t < TL.trace[0] + .25) { const k = eio(prog(t, TL.trace[0], .25)); x = lerp(126, x, k); y = lerp(318, y, k); }
+    x = lerp(x, XR, Math.pow(G.z, 2));
+    const e = logoDot(); if (endP > 0) { x = lerp(x, e.x, endE); y = lerp(y, e.y, endE); r = lerp(r, e.r, endE); }
+    const pulse = .5 + .5 * Math.sin(t * 5.2);
+    ctx.globalAlpha = .22 * (1 - pulse) * (endP > 0 ? sceneA : 1); ctx.strokeStyle = C.red; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, r + 8 + pulse * 22, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+    glowDot(x, y, r);
+  }
+
+  /* ----- carton de fin ----- */
+  if (endP > 0) {
+    logo(540, 700, 300, prog(t, TL.end + .25, .9));
+    const ws = 150; ctx.font = font(900, ws); LS('10px'); const ww = ctx.measureText('VERTIGE').width - 10; LS('0px');
+    kinetic('VERTIGE', 540 - ww / 2, 1150, font(900, ws), t, TL.word, { ls: '10px', per: .05, rise: -120, s0: 1.4 });
+    ctx.font = font(600, 44); const tg = 'Les chiffres qui donnent le vertige.', tw = ctx.measureText(tg).width;
+    wipe(tg, 540 - tw / 2, 1240, font(600, 44), t, TL.tag, { color: C.mist });
+    const cp = eOut5(prog(t, TL.cta, .5));
+    if (cp > 0) {
+      ctx.globalAlpha = cp; ctx.strokeStyle = C.red; ctx.lineWidth = 3; const bw = 760 * cp; ctx.strokeRect(540 - bw / 2, 1370, bw, 170);
+      ctx.fillStyle = C.ivory; ctx.font = font(700, 34, MONO); ctx.textAlign = 'center';
+      ctx.fillText('ENVOIE ÇA À QUELQU’UN', 540, 1442 + (1 - cp) * 20); ctx.fillText('QUI AURAIT DIT « RIEN ».', 540, 1496 + (1 - cp) * 20); ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    }
+  }
+  finish(t, land);
+}
+function finish(t, land) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.save(); ctx.filter = 'blur(22px)'; ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = .42; ctx.drawImage(cv, 0, 0); ctx.restore(); ctx.filter = 'none';
+  if (land && land.amp > 10 && land.d < .25) { ctx.globalAlpha = (1 - land.d / .25) * .16; ctx.fillStyle = C.ivory; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  const v = ctx.createRadialGradient(W / 2, H / 2, 500, W / 2, H / 2, 1250); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.6)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  const r = rng(Math.round(t * FPS) + 1); ctx.globalAlpha = .055; ctx.globalCompositeOperation = 'overlay';
+  ctx.drawImage(grain, -r() * 200, -r() * 200, W + 400, H + 400); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+
+/* ---------- couverture ---------- */
+function renderCover() {
+  const G = { R: 300, cx: 540, cy: 1180, top: 880, lift: 46, z: 0, ball: 0 };
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = 'none'; background(0, G); stars(3, geom(3), 1);
+  planet(2.2, G, 1);
+  ctx.strokeStyle = C.ivory; ctx.lineWidth = 7; ctx.beginPath(); ctx.arc(G.cx, G.cy, G.R + 4 + G.lift, 0, 7); ctx.stroke();
+  ctx.strokeStyle = C.red; ctx.lineWidth = 16; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(G.cx, G.cy, G.R + 4 + G.lift, -Math.PI / 2 + .03, -Math.PI / 2 + .21); ctx.stroke(); ctx.lineCap = 'butt';
+  glowDot(G.cx, G.cy - G.R - 4 - G.lift, 15);
+  ctx.fillStyle = C.mist; ctx.font = font(700, 24, MONO); LS('4px'); ctx.fillText('VERTIGE · N°03', 110, 400);
+  ctx.fillStyle = C.ivory; LS('-4px'); ctx.font = font(900, 118); ctx.fillText('UNE CORDE', 104, 530); ctx.fillText('AUTOUR', 104, 645);
+  ctx.fillText('DE LA TERRE.', 104, 760);
+  ctx.fillStyle = C.red; LS('-3px'); ctx.font = font(900, 150); ctx.fillText('+ 1 MÈTRE ?', 102, 1700); LS('0px');
+  finish(0, null);
+}
+
+window.ready = Promise.all([document.fonts.load('500 20px JBM'), document.fonts.load('700 20px JBM'), document.fonts.load('900 20px "Inter Display"'), document.fonts.load('800 20px "Inter Display"'), document.fonts.load('600 20px "Inter Display"')]).then(() => { draw(0); return true; });
+if (location.search.includes('preview')) { document.body.classList.add('preview'); const s = performance.now(); (function loop() { draw(((performance.now() - s) / 1000) % DURATION); requestAnimationFrame(loop); })(); }
+</script>
+</body>
+</html>
