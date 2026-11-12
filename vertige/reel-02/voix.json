@@ -1,0 +1,9 @@
+[
+  {"t": 0.15, "dit": "Tu dépenses mille euros par jour. Tu tiens combien de temps ?", "st": "Tu dépenses 1 000 € par jour.\nTu tiens combien de temps ?"},
+  {"t": 4.55, "dit": "Avec un million : deux ans et neuf mois.", "st": "Avec un million : 2 ans et 9 mois."},
+  {"t": 7.1, "dit": "Et avec un milliard ?", "st": "Et avec un milliard ?"},
+  {"t": 12.55, "dit": "Deux mille sept cent trente-huit ans.", "st": "2 738 ans."},
+  {"t": 15.1, "dit": "Et avec mille milliards ?", "st": "Et avec mille milliards ?"},
+  {"t": 22.8, "dit": "Presque trois millions d'années.", "st": "Presque 3 millions d'années."},
+  {"t": 25.2, "dit": "Et en une vie entière ? Vingt-neuf millions. Trois pour cent d'un milliard.", "st": "Et en une vie entière ? 29 millions.\n3 % d'un milliard."}
+]

@@ -1,0 +1,9 @@
+[
+  {"t": 0.15, "dit": "Il y a un million de secondes, c'était quand ?", "st": "Il y a un million de secondes,\nc'était quand ?"},
+  {"t": 4.55, "dit": "Il y a onze jours et demi.", "st": "Il y a 11 jours et demi."},
+  {"t": 7.1, "dit": "Et il y a un milliard de secondes ?", "st": "Et il y a un milliard de secondes ?"},
+  {"t": 12.55, "dit": "Trente et un ans. Peut-être avant ta naissance.", "st": "31 ans.\nPeut-être avant ta naissance."},
+  {"t": 15.3, "dit": "Et mille milliards ?", "st": "Et mille milliards ?"},
+  {"t": 22.8, "dit": "Presque trente-deux mille ans.", "st": "Presque 32 000 ans."},
+  {"t": 25.2, "dit": "À cette échelle, un million et un milliard, c'est le même pixel.", "st": "À cette échelle, un million et un milliard,\nc'est le même pixel."}
+]

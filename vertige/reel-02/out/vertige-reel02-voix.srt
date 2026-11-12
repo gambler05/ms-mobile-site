@@ -1,0 +1,29 @@
+1
+00:00:00,180 --> 00:00:03,327
+Tu dépenses 1 000 € par jour.
+Tu tiens combien de temps ?
+
+2
+00:00:04,550 --> 00:00:07,235
+Avec un million : 2 ans et 9 mois.
+
+3
+00:00:07,265 --> 00:00:08,390
+Et avec un milliard ?
+
+4
+00:00:12,550 --> 00:00:14,137
+2 738 ans.
+
+5
+00:00:15,100 --> 00:00:16,241
+Et avec mille milliards ?
+
+6
+00:00:22,800 --> 00:00:24,221
+Presque 3 millions d'années.
+
+7
+00:00:25,200 --> 00:00:29,279
+Et en une vie entière ? 29 millions.
+3 % d'un milliard.
