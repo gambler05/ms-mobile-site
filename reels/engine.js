@@ -4,6 +4,8 @@
 (function () {
   const reel = window.REEL, brand = window.BRAND;
   const stage = document.getElementById('stage');
+  const sfx = [];
+  let t = 0, cur = 0, html = '';
   const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
 
   // « *mot* » devient un mot accentué ; chaque mot reçoit son propre décalage.
@@ -13,6 +15,7 @@
       if (part === '*') { accent = !accent; continue; }
       for (const w of part.split(/\s+/).filter(Boolean)) {
         const inner = accent ? `<em>${esc(w)}</em>` : esc(w);
+        sfx.push({ t: cur + d0 + i * step, n: 'tick', g: 0.3 });
         out += `<span class="w"><span class="a" style="--d:${(d0 + i * step).toFixed(2)}s">${inner}</span></span> `;
         i++;
       }
@@ -36,13 +39,30 @@
   const drop = (x, y, s, d, fx = 0, fy = -260) =>
     `<g class="k" style="animation:enter .7s cubic-bezier(.5,0,.9,.6);--d:${d}s;--fx:${fx}px;--fy:${fy}px"><path d="M0 -34C0 -34 26 2 26 18A26 26 0 0 1 -26 18C-26 2 0 -34 0 -34Z" transform="translate(${x} ${y}) scale(${s})" class="fs"/></g>`;
 
+  // Effets sonores de chaque visuel : [instant dans la scène, son, volume].
+  const SND = {
+    drain: [[0.8, 'down', 0.5], [2.3, 'buzz', 0.7]],
+    thermo: [[0.7, 'rise', 0.45]],
+    range: [[0.7, 'rise', 0.4], [3.0, 'ding', 0.7]],
+    bolt: [[0.9, 'zap', 0.5], [1.5, 'zap', 0.5], [2.2, 'buzz', 0.8]],
+    splash: [[0.7, 'drop', 0.6], [0.9, 'drop', 0.5], [1.1, 'drop', 0.6], [1.3, 'drop', 0.5], [1.5, 'thud', 0.7]],
+    power: [[0.6, 'tick', 0.8], [1.2, 'down', 0.7]],
+    rice: [0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => [0.7 + i * 0.08 + 0.4, 'tick', 0.45]).concat([[2.0, 'buzz', 0.8]]),
+    plug: [[0.5, 'tick', 0.6], [1.9, 'buzz', 0.8]],
+    clock: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((i) => [0.8 + i * 0.25, 'tick', 0.7]),
+    crack: [[0.9, 'thud', 0.7], [1.0, 'crack', 0.9], [1.4, 'crack', 0.5]],
+    spread: [[0.7, 'crack', 0.8], [1.6, 'crack', 0.6], [2.0, 'crack', 0.6], [2.5, 'crack', 0.7]],
+    leak: [[0.6, 'crack', 0.6], [1.8, 'drop', 0.6], [2.4, 'drop', 0.5], [1.4, 'tick', 0.4], [2.0, 'tick', 0.4], [2.6, 'tick', 0.4]],
+    ghost: [0.7, 1.2, 1.6, 2.0, 2.4, 2.8, 3.1].map((d) => [d, 'pop', 0.5]),
+  };
+
   const VIS = {
     // Batterie qui se vide
     drain: () => `<svg viewBox="0 0 400 400">
       <rect x="60" y="130" width="250" height="140" rx="26" ${dr(0.2)}/>
       <path d="M332 175v50" ${dr(0.5)}/>
       <rect x="82" y="152" width="206" height="96" rx="12" ${k('drain 2s cubic-bezier(.4,0,.2,1)', 0.8, 'org-l')}/>
-      <g ${k('shake .6s linear', 2.3, 'org')}><path d="M200 300l-22 44h44Z" class="fo"/><path d="M200 318v12" class="st thin" style="stroke:#070b26"/></g>
+      <g ${k('shake .6s linear', 2.3, 'org')}><path d="M200 300l-22 44h44Z" class="fo"/><path d="M200 318v12" class="st thin" style="stroke:#060606"/></g>
     </svg>`,
     // Thermomètre qui monte + compteur
     thermo: () => `<svg viewBox="0 0 400 400"><g transform="translate(-62 0)">
@@ -58,7 +78,7 @@
       <rect x="40" y="150" width="290" height="120" rx="26" ${dr(0.2)}/>
       <path d="M352 188v44" ${dr(0.5)}/>
       <rect x="60" y="170" width="250" height="80" rx="12" class="fg k org-l" style="animation:charge 2.4s cubic-bezier(.4,0,.2,1);--d:.7s"/>
-      <rect x="60" y="170" width="50" height="80" rx="12" class="k" style="fill:#070b26;opacity:.55;animation:fade .4s ease;--d:2.6s"/>
+      <rect x="60" y="170" width="50" height="80" rx="12" class="k" style="fill:#060606;opacity:.55;animation:fade .4s ease;--d:2.6s"/>
       <path d="M110 136v148" ${dr(2.5, 'o thin')}/><path d="M260 136v148" ${dr(2.7, 'o thin')}/>
       <text x="110" y="118" class="label fade a" style="--d:2.6s;font-size:50px">20</text>
       <text x="260" y="118" class="label fade a" style="--d:2.8s;font-size:50px">80</text>
@@ -75,15 +95,15 @@
     splash: () => `<svg viewBox="0 0 400 400">
       <g ${k('shake .7s linear', 1.5, 'org')}>${phone(0.2)}</g>
       ${drop(70, 150, 1.5, 0.7)}${drop(330, 110, 1.2, 0.9)}${drop(340, 260, 1.7, 1.1)}${drop(60, 290, 1.1, 1.3)}
-      <circle cx="200" cy="200" r="190" class="st thin k org" style="stroke:#88deeb;animation:ripple 1.2s ease-out;--d:1.5s"/>
-      <circle cx="200" cy="200" r="190" class="st thin k org" style="stroke:#88deeb;animation:ripple 1.2s ease-out;--d:1.9s"/>
+      <circle cx="200" cy="200" r="190" class="st thin k org" style="stroke:#ffffff;animation:ripple 1.2s ease-out;--d:1.5s"/>
+      <circle cx="200" cy="200" r="190" class="st thin k org" style="stroke:#ffffff;animation:ripple 1.2s ease-out;--d:1.9s"/>
     </svg>`,
     // Bouton d'arrêt
     power: () => `<svg viewBox="0 0 400 400">
       <path d="M130 118a110 110 0 1 0 140 0" ${dr(0.2)}/>
       <path d="M200 70v130" ${dr(0.6, 'o')}/>
-      <circle cx="200" cy="200" r="180" class="st thin k org" style="stroke:#ec652b;animation:ripple 1.3s ease-out;--d:1.2s"/>
-      <circle cx="200" cy="200" r="180" class="st thin k org" style="stroke:#ec652b;animation:ripple 1.3s ease-out;--d:1.8s"/>
+      <circle cx="200" cy="200" r="180" class="st thin k org" style="stroke:#ff3038;animation:ripple 1.3s ease-out;--d:1.2s"/>
+      <circle cx="200" cy="200" r="180" class="st thin k org" style="stroke:#ff3038;animation:ripple 1.3s ease-out;--d:1.8s"/>
     </svg>`,
     // Bol de riz, barré
     rice: () => `<svg viewBox="0 0 400 400">
@@ -123,7 +143,7 @@
       <path d="M170 160l-44-50" ${dr(1.6, 'o thin')}/><path d="M244 178l30-70" ${dr(1.8, 'o thin')}/>
       <path d="M192 246l-66 60" ${dr(2.0, 'o thin')}/><path d="M192 246l80 70" ${dr(2.2, 'o thin')}/>
       <path d="M170 160l-46 30" ${dr(2.5, 'o thin')}/><path d="M244 178l32 50" ${dr(2.7, 'o thin')}/>
-      <circle cx="200" cy="200" r="60" class="st thin k org" style="stroke:#ec652b;animation:ripple .9s ease-out;--d:.7s"/>
+      <circle cx="200" cy="200" r="60" class="st thin k org" style="stroke:#ff3038;animation:ripple .9s ease-out;--d:.7s"/>
     </svg>`,
     // Poussière et humidité qui entrent
     leak: () => `<svg viewBox="0 0 400 400">
@@ -137,7 +157,7 @@
     ghost: () => `<svg viewBox="0 0 400 400">
       ${phone(0.2)}
       ${[[170, 130, 0.7], [236, 190, 1.2], [160, 250, 1.6], [230, 300, 2.0], [200, 160, 2.4], [176, 310, 2.8], [240, 120, 3.1]].map(([x, y, d]) =>
-        `<circle cx="${x}" cy="${y}" r="34" class="st thin k org" style="stroke:#94efb7;animation:ripple .8s ease-out;--d:${d}s"/>
+        `<circle cx="${x}" cy="${y}" r="34" class="st thin k org" style="stroke:#ffffff;animation:ripple .8s ease-out;--d:${d}s"/>
          <circle cx="${x}" cy="${y}" r="10" class="fg k org" style="animation:ripple .8s ease-out;--d:${d}s"/>`).join('')}
     </svg>`,
   };
@@ -145,7 +165,7 @@
   const visual = (name, d = 0.1) =>
     `<div class="visual pop a" style="--d:${d}s"><div class="disc"></div><div class="ring"></div>${VIS[name]()}</div>`;
 
-  let t = 0, html = '<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="grid"></div>';
+  html = '<div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div><div class="grid"></div>';
   let bars = '', n = 0;
   const total = reel.scenes.filter((s) => s.type === 'point').length;
 
@@ -154,9 +174,17 @@
     const st = `style="--s:${t.toFixed(2)}s;--dur:${sc.dur}s"`;
     bars += `<i ${st}></i>`;
     let body = '';
+    cur = t;
+    if (i === 0) sfx.push({ t: 0, n: 'thud', g: 0.9 });
+    else sfx.push({ t: t - 0.3, n: 'whoosh', g: 0.75 });
+    if (sc.visual) {
+      sfx.push({ t: t + (sc.type === 'hook' ? 0.35 : 0.1), n: 'pop', g: 0.6 });
+      for (const [d, n, g] of SND[sc.visual] || []) sfx.push({ t: t + d, n, g });
+    }
+    if (sc.type === 'outro') sfx.push({ t: t + 0.7, n: 'pop', g: 0.7 }, { t: t + 1.3, n: 'chime', g: 0.8 });
     if (sc.type === 'hook') {
       body = `<div class="kicker pop a" style="--d:.05s">${esc(sc.kicker)}</div>
-        <h1 class="danger">${lines(sc.lines, 0.12)}</h1>${visual(sc.visual, 0.35)}`;
+        <h1>${lines(sc.lines, 0.12)}</h1>${visual(sc.visual, 0.35)}`;
     } else if (sc.type === 'point') {
       n++;
       body = `<div class="num rise a" style="--d:.05s">${String(n).padStart(2, '0')}<small>/ ${String(total).padStart(2, '0')}</small></div>
@@ -167,7 +195,7 @@
       const who = brand.handle || `${brand.name} · ${brand.city}`;
       body = `<h1>${lines(sc.lines, 0.1)}</h1>
         <svg class="save pop a" style="--d:.7s" viewBox="0 0 100 100"><path d="M24 12h52v78L50 68 24 90Z" fill="#fff"/></svg>
-        <div class="cta rise a" style="--d:.9s"><div class="logo">MS</div>
+        <div class="cta rise a" style="--d:.9s"><img class="logo" src="../assets/logo-ms-mobile.svg" alt="">
           <div><div class="who">${esc(who)}</div><div class="sub">${esc(brand.tagline)}</div></div></div>
         <div class="follow a" style="--d:1.3s">Abonne-toi +</div>`;
     }
@@ -190,6 +218,7 @@
   place();
   document.fonts.ready.then(place);
 
+  window.__sfx = sfx;
   window.__duration = Math.round(t * 1000);
   let anims = null;
   window.__prep = async () => {

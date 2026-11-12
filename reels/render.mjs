@@ -5,7 +5,8 @@
 import { spawn } from 'node:child_process';
 import { once } from 'node:events';
 import { createRequire } from 'node:module';
-import { readdirSync, writeFileSync, mkdirSync } from 'node:fs';
+import { readdirSync, writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { mixToWav } from './sfx.mjs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -30,11 +31,14 @@ for (const id of ids) {
   const duration = await page.evaluate(() => window.__prep());
   const frames = Math.round((duration / 1000) * FPS);
 
+  const wav = join(out, id + '.wav');
+  writeFileSync(wav, mixToWav(await page.evaluate(() => window.__sfx), duration / 1000));
+
   const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error',
     '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
-    '-f', 'lavfi', '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100', // piste muette : la musique s'ajoute dans Instagram
+    '-i', wav, // effets sonores synthétisés ; une musique peut encore être ajoutée dans Instagram
     '-c:v', 'libx264', '-preset', 'slow', '-crf', '17', '-pix_fmt', 'yuv420p', '-r', String(FPS),
-    '-c:a', 'aac', '-b:a', '128k', '-shortest', '-movflags', '+faststart',
+    '-c:a', 'aac', '-b:a', '192k', '-shortest', '-movflags', '+faststart',
     join(out, id + '.mp4')], { stdio: ['pipe', 'inherit', 'inherit'] });
 
   for (let f = 0; f < frames; f++) {
@@ -45,6 +49,8 @@ for (const id of ids) {
   ff.stdin.end();
   const [code] = await once(ff, 'close');
   if (code !== 0) { console.error(`ffmpeg a échoué pour ${id} (code ${code})`); process.exit(1); }
+
+  rmSync(wav);
 
   // Couverture : fin de l'accroche, quand le titre est entièrement affiché.
   const hookEnd = await page.evaluate(() => window.REEL.scenes[0].dur * 1000 - 600);
