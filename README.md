@@ -127,3 +127,23 @@ doivent réserver lecture et écriture aux comptes authentifiés.
 - **Police système.** Aucune fonte n’est embarquée : le fichier reste léger et libre
   de toute licence. La pile de polices retenue rend de façon très proche sur Windows,
   macOS, iOS et Android.
+
+## Reels Instagram
+
+`reels/` produit des reels verticaux en motion graphics aux couleurs de la boutique
+(1080 × 1920, 30 i/s, H.264 — le format attendu par Instagram).
+
+```bash
+npm run reels              # rend tous les reels de reels/defs/ dans reels/out/
+npm run reels -- batterie  # un seul
+```
+
+Chaque reel produit trois fichiers : `<id>.mp4` (la vidéo), `<id>.jpg` (la couverture)
+et `<id>.txt` (la légende et les hashtags à coller). La piste audio est muette : la
+musique se choisit dans Instagram au moment de publier.
+
+Ajouter un reel : copier un fichier de `reels/defs/` et changer les textes. Une scène
+est une accroche (`hook`), un point (`point`) ou la fin (`outro`) ; `*mot*` met un mot
+en couleur. Le nom de la boutique et l'identifiant Instagram affichés à la fin se
+règlent dans `reels/brand.js`. Pour prévisualiser sans rendre : ouvrir
+`reels/player.html?r=<id>` dans un navigateur.

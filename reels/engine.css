@@ -1,0 +1,158 @@
+/* Moteur de reels MS MOBILE — 1080 × 1920, 30 i/s.
+   Toute l'animation est en CSS : chaque scène porte --s (début) et --dur (durée),
+   chaque élément un décalage local --d. Le rendu met les animations en pause et
+   les positionne image par image, ce qui rend la vidéo exactement reproductible. */
+
+@property --n { syntax: '<integer>'; initial-value: 0; inherits: false; }
+
+:root {
+  --navy: #111a4a;
+  --deep: #070b26;
+  --seafoam: #44b48b;
+  --seafoam-400: #94efb7;
+  --sky: #88deeb;
+  --orange: #ec652b;
+  --peach: #f2936b;
+  --white: #ffffff;
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --font: 'Inter Display', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1080px; height: 1920px; overflow: hidden; background: var(--deep); }
+body { font-family: var(--font); color: var(--white); -webkit-font-smoothing: antialiased; }
+
+#stage { position: relative; width: 1080px; height: 1920px; overflow: hidden;
+  background: radial-gradient(120% 80% at 50% 0%, #1b2a7a 0%, var(--navy) 42%, var(--deep) 100%); }
+
+/* ---------- Décor ---------- */
+.blob { position: absolute; border-radius: 50%; filter: blur(110px); opacity: .55; }
+.blob.b1 { width: 760px; height: 760px; left: -260px; top: 240px; background: var(--seafoam);
+  animation: drift1 9s ease-in-out infinite alternate; }
+.blob.b2 { width: 680px; height: 680px; right: -280px; top: 1040px; background: #3b5bdc;
+  animation: drift2 11s ease-in-out infinite alternate; }
+.blob.b3 { width: 420px; height: 420px; left: 320px; top: 1500px; background: var(--orange); opacity: .28;
+  animation: drift1 13s ease-in-out infinite alternate-reverse; }
+@keyframes drift1 { from { transform: translate(0, 0) scale(1); } to { transform: translate(180px, -220px) scale(1.25); } }
+@keyframes drift2 { from { transform: translate(0, 0) scale(1.1); } to { transform: translate(-220px, 160px) scale(.85); } }
+
+.grid { position: absolute; inset: -120px; opacity: .16;
+  background-image: radial-gradient(rgba(255, 255, 255, .9) 2px, transparent 2.5px);
+  background-size: 60px 60px; animation: gridmove 6s linear infinite; }
+@keyframes gridmove { to { transform: translate(60px, -60px); } }
+
+/* ---------- Barre de progression ---------- */
+.progress { position: absolute; left: 64px; right: 64px; top: 236px; display: flex; gap: 12px; z-index: 5; }
+.progress i { flex: 1; height: 8px; border-radius: 8px; background: rgba(255, 255, 255, .22); overflow: hidden; }
+.progress i::after { content: ''; display: block; height: 100%; background: var(--white); border-radius: 8px;
+  transform-origin: left; transform: scaleX(0);
+  animation: fill var(--dur) linear var(--s) both; }
+@keyframes fill { to { transform: scaleX(1); } }
+
+.brand { position: absolute; left: 64px; top: 272px; z-index: 5; display: flex; align-items: center; gap: 16px;
+  font-size: 30px; font-weight: 700; letter-spacing: 3px; opacity: .85; }
+.brand b { width: 14px; height: 14px; border-radius: 50%; background: var(--seafoam-400); }
+
+/* ---------- Scènes ---------- */
+.scene { position: absolute; inset: 0; opacity: 0; animation: show var(--dur) linear var(--s) none; }
+@keyframes show { 0%, 100% { opacity: 1; } }
+.inner { position: absolute; inset: 0; animation: leave .32s cubic-bezier(.7, 0, .84, 0) calc(var(--s) + var(--dur) - .32s) both; }
+.scene.last .inner { animation: none; }
+@keyframes leave { to { transform: translateY(-90px) scale(.96); opacity: 0; filter: blur(8px); } }
+
+/* Volet de transition entre deux scènes */
+.wipe { position: absolute; left: -30%; top: -10%; width: 160%; height: 120%; z-index: 4; pointer-events: none;
+  background: linear-gradient(100deg, transparent 0%, var(--seafoam) 18%, var(--seafoam-400) 50%, var(--sky) 82%, transparent 100%);
+  transform: translateX(-110%) skewX(-14deg); opacity: .95;
+  animation: wipe .62s cubic-bezier(.65, 0, .35, 1) calc(var(--at) - .30s) both; }
+@keyframes wipe { from { transform: translateX(-110%) skewX(-14deg); } to { transform: translateX(110%) skewX(-14deg); } }
+
+/* ---------- Animations élémentaires ---------- */
+.a { animation-delay: calc(var(--s) + var(--d, 0s)) !important; }
+.rise { animation: rise .7s var(--ease) both; }
+@keyframes rise { from { transform: translateY(70px); opacity: 0; } to { transform: none; opacity: 1; } }
+.pop { animation: pop .65s cubic-bezier(.34, 1.56, .64, 1) both; }
+@keyframes pop { from { transform: scale(.3); opacity: 0; } to { transform: none; opacity: 1; } }
+.fade { animation: fade .5s ease both; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw .8s cubic-bezier(.65, 0, .35, 1) both; }
+/* opacité : sans elle, l'extrémité arrondie du trait apparaît en point avant le tracé */
+@keyframes draw { from { stroke-dashoffset: 1; opacity: 0; } 2% { opacity: 1; } to { stroke-dashoffset: 0; opacity: 1; } }
+
+/* Titres en mots masqués */
+.w { display: inline-block; overflow: hidden; vertical-align: top; padding: 0 .04em .14em; margin: 0 -.04em -.14em; }
+.w > span { display: inline-block; animation: word .75s var(--ease) both; }
+@keyframes word { from { transform: translateY(135%) rotate(6deg); } to { transform: none; } }
+em { font-style: normal; color: var(--seafoam-400); }
+.danger em { color: var(--peach); }
+
+/* ---------- Accroche ---------- */
+.hook .kicker { position: absolute; left: 64px; top: 400px; padding: 14px 30px; border-radius: 999px;
+  background: var(--orange); font-size: 38px; font-weight: 800; letter-spacing: 3px; text-transform: uppercase; }
+.hook h1 { position: absolute; left: 64px; right: 40px; top: 500px; font-size: 158px; line-height: 1.0;
+  font-weight: 900; letter-spacing: -5px; }
+.hook h1 .line { display: block; }
+.hook .visual { position: absolute; left: 50%; top: 1040px; width: 520px; height: 520px; margin-left: -260px; }
+
+/* ---------- Point ---------- */
+.point .num { position: absolute; left: 64px; top: 384px; display: flex; align-items: baseline; gap: 14px;
+  font-weight: 900; font-size: 150px; letter-spacing: -6px; line-height: 1; }
+.point .num small { font-size: 46px; font-weight: 700; letter-spacing: 0; opacity: .55; }
+.point .visual { position: absolute; left: 50%; top: 470px; width: 560px; height: 560px; margin-left: -200px; }
+.point h2 { position: absolute; left: 64px; right: 56px; top: 1060px; font-size: 112px; line-height: 1.04;
+  font-weight: 900; letter-spacing: -3.5px; }
+.point p { position: absolute; left: 64px; right: 150px; top: 1320px; font-size: 52px; line-height: 1.28;
+  font-weight: 500; color: rgba(255, 255, 255, .86); }
+
+/* Médaillon du visuel */
+.disc { position: absolute; inset: 0; border-radius: 50%;
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, .22), rgba(255, 255, 255, .05) 60%);
+  box-shadow: inset 0 0 0 3px rgba(255, 255, 255, .22), 0 40px 90px rgba(0, 0, 0, .35); }
+.ring { position: absolute; inset: -34px; border-radius: 50%; border: 3px dashed rgba(148, 239, 183, .55);
+  animation: spin 14s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.visual svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.visual svg * { vector-effect: none; }
+.st { fill: none; stroke: #fff; stroke-width: 14; stroke-linecap: round; stroke-linejoin: round; }
+.st.o { stroke: var(--orange); }
+.st.g { stroke: var(--seafoam-400); }
+.st.thin { stroke-width: 8; }
+.fo { fill: var(--orange); } .fg { fill: var(--seafoam-400); } .fw { fill: #fff; } .fs { fill: var(--sky); }
+.label { font: 900 64px var(--font); fill: #fff; text-anchor: middle; }
+.count { counter-reset: n var(--n); }
+.count::after { content: counter(n); }
+.big { position: absolute; left: 0; right: 0; text-align: center; font-weight: 900; font-size: 92px; letter-spacing: -3px; }
+
+/* Animations propres aux visuels (toutes relatives à la scène) */
+.k { animation-delay: calc(var(--s) + var(--d, 0s)) !important; animation-fill-mode: both !important; }
+@keyframes drain { from { transform: scaleX(1); fill: #94efb7; } to { transform: scaleX(.08); fill: #ec652b; } }
+@keyframes mercury { from { transform: scaleY(.15); fill: #94efb7; } to { transform: scaleY(1); fill: #ec652b; } }
+@keyframes charge { 0% { transform: scaleX(0); } 45% { transform: scaleX(1); } 60% { transform: scaleX(1); } 100% { transform: scaleX(.8); } }
+@keyframes shake { 0%, 100% { transform: none; } 20% { transform: translate(-10px, 4px) rotate(-3deg); } 40% { transform: translate(10px, -4px) rotate(3deg); }
+  60% { transform: translate(-7px, 2px) rotate(-2deg); } 80% { transform: translate(6px, -2px) rotate(1deg); } }
+@keyframes flicker { 0%, 100% { opacity: 1; } 12% { opacity: .2; } 24% { opacity: 1; } 40% { opacity: .35; } 55% { opacity: 1; } 78% { opacity: .5; } }
+@keyframes fall { from { transform: translateY(-260px); opacity: 0; } 30% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes ripple { from { transform: scale(.2); opacity: .95; } to { transform: scale(1); opacity: 0; } }
+@keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@keyframes hand { from { transform: rotate(0); } to { transform: rotate(540deg); } }
+@keyframes enter { from { transform: translate(var(--fx), var(--fy)); opacity: 0; } 25% { opacity: 1; } to { transform: none; opacity: 1; } }
+@keyframes dim { from { opacity: 1; } to { opacity: .25; } }
+.org { transform-box: fill-box; transform-origin: center; }
+.org-l { transform-box: fill-box; transform-origin: left center; }
+.org-b { transform-box: fill-box; transform-origin: center bottom; }
+
+/* ---------- Fin ---------- */
+.outro h1 { position: absolute; left: 64px; right: 40px; top: 420px; font-size: 150px; line-height: 1.02;
+  font-weight: 900; letter-spacing: -5px; }
+.outro h1 .line { display: block; }
+.outro .save { position: absolute; left: 64px; top: 950px; width: 150px; height: 150px; }
+.outro .cta { position: absolute; left: 64px; right: 64px; top: 1150px; padding: 44px 48px; border-radius: 40px;
+  background: #fff; color: var(--navy); display: flex; align-items: center; gap: 36px;
+  box-shadow: 0 40px 90px rgba(0, 0, 0, .4); }
+.outro .cta .logo { width: 120px; height: 120px; flex: none; border-radius: 30px; background: var(--navy);
+  display: grid; place-items: center; font-weight: 900; font-size: 52px; color: #fff; letter-spacing: -2px; }
+.outro .cta .who { font-size: 62px; font-weight: 900; letter-spacing: -1.5px; line-height: 1.05; }
+.outro .cta .sub { font-size: 36px; font-weight: 600; color: #5a6080; margin-top: 8px; }
+.outro .follow { position: absolute; left: 64px; top: 1420px; padding: 22px 44px; border-radius: 999px;
+  background: var(--seafoam); font-size: 46px; font-weight: 800; }
+.outro .follow.a { animation: pop .65s cubic-bezier(.34, 1.56, .64, 1) both, pulse 1.2s ease-in-out infinite; }

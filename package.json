@@ -8,7 +8,8 @@
     "build": "node build.mjs",
     "test": "node build.mjs && node --test tests/unit/*.test.mjs && npx playwright test",
     "test:unit": "node build.mjs && node --test tests/unit/*.test.mjs",
-    "test:e2e": "node build.mjs && npx playwright test"
+    "test:e2e": "node build.mjs && npx playwright test",
+    "reels": "node reels/render.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0"

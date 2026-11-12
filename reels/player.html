@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1080">
+<title>Reel MS MOBILE</title>
+<link rel="stylesheet" href="engine.css">
+</head>
+<body>
+<div id="stage"></div>
+<script src="brand.js"></script>
+<script>
+  // player.html?r=batterie — sans paramètre, le premier reel.
+  const r = new URLSearchParams(location.search).get('r') || 'batterie';
+  document.write('<script src="defs/' + encodeURIComponent(r) + '.js"><\/script>');
+</script>
+<script src="engine.js"></script>
+</body>
+</html>
