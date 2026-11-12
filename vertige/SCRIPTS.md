@@ -146,7 +146,7 @@ ce qu'on mesure ici, c'est ce que « doubler » veut dire.
 | 6,0–12,5 | `LE NOMBRE D'ORDRES POSSIBLES :` puis le nombre complet, `80 658 175 170 943 878 571 660 636 856 403 766 975 289 505 440 883 277 824 000 000 000 000` | Le nombre s'écrit groupe par groupe et **déborde de l'écran** ; la caméra tombe le long de ses 68 chiffres | Un tic par groupe, chute |
 | 12,5–15,0 | `68 CHIFFRES.` | Impact | Impact fort, silence 0,3 s |
 | 15,0–21,0 | `8 MILLIARDS D'HUMAINS` / `1 MÉLANGE PAR SECONDE` / `DEPUIS LE BIG BANG` | Trois lignes qui s'impriment ; une barre de progression se lance… et ne bouge pas | Montée longue |
-| 21,0–25,5 | `PROGRESSION :` / `0,000 000 000 000 000 000 000 000 000 000 000 000 000 004 %` | Zoom extrême sur le début de la barre : toujours vide | Impact, musique coupée 1 s |
+| 21,0–25,5 | `PROGRESSION :` / `0,000 000 000 000 000 000 000 000 000 000 000 000 004 %` | Zoom extrême sur le début de la barre : toujours vide | Impact, musique coupée 1 s |
 | 25,5–27,5 | `TU TIENS` / `UN ORDRE UNIQUE` / `DANS LA MAIN.` | La carte vermillon revient au centre | Coup grave |
 | 27,5–30,0 | Carton de fin : `ENVOIE ÇA À QUELQU'UN AVANT LA PROCHAINE PARTIE.` | Carte → point → logo | Logo sonore |
 
