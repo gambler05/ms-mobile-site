@@ -1,0 +1,35 @@
+1
+00:00:00,180 --> 00:00:03,665
+Mélange 52 cartes.
+Cet ordre a-t-il déjà existé ?
+
+2
+00:00:03,695 --> 00:00:04,991
+Presque sûrement jamais.
+
+3
+00:00:05,750 --> 00:00:07,554
+Voici le nombre d'ordres possibles.
+
+4
+00:00:10,150 --> 00:00:11,359
+68 chiffres.
+
+5
+00:00:12,000 --> 00:00:15,881
+8 milliards d'humains, un mélange par seconde,
+depuis le Big Bang.
+
+6
+00:00:18,250 --> 00:00:22,233
+Part explorée : zéro virgule,
+suivi de 38 zéros…
+
+7
+00:00:22,263 --> 00:00:24,422
+…puis d'un 4. Pour cent.
+
+8
+00:00:24,452 --> 00:00:26,909
+Ton jeu est unique.
+Presque à coup sûr.

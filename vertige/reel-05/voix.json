@@ -1,0 +1,10 @@
+[
+  {"t": 0.15, "dit": "Mélange cinquante-deux cartes. Cet ordre a-t-il déjà existé ?", "st": "Mélange 52 cartes.\nCet ordre a-t-il déjà existé ?"},
+  {"t": 3.6, "dit": "Presque sûrement jamais.", "st": "Presque sûrement jamais."},
+  {"t": 5.75, "dit": "Voici le nombre d'ordres possibles.", "st": "Voici le nombre d'ordres possibles."},
+  {"t": 10.15, "dit": "Soixante-huit chiffres.", "st": "68 chiffres."},
+  {"t": 12.0, "dit": "Huit milliards d'humains, un mélange par seconde, depuis le Big Bang.", "st": "8 milliards d'humains, un mélange par seconde,\ndepuis le Big Bang."},
+  {"t": 18.25, "dit": "Part explorée : zéro, virgule, suivi de trente-huit zéros,", "st": "Part explorée : zéro virgule,\nsuivi de 38 zéros…"},
+  {"t": 21.85, "dit": "puis d'un quatre. Pour cent.", "st": "…puis d'un 4. Pour cent."},
+  {"t": 24.1, "dit": "Ton jeu est unique. Presque à coup sûr.", "st": "Ton jeu est unique.\nPresque à coup sûr."}
+]
