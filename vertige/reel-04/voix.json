@@ -1,0 +1,9 @@
+[
+  {"t": 0.15, "dit": "Tu plies une feuille quarante-deux fois. Elle monte jusqu'où ?", "st": "Plie une feuille 42 fois.\nElle monte jusqu'où ?"},
+  {"t": 4.35, "dit": "Dix plis : dix centimètres.", "st": "10 plis : 10 centimètres."},
+  {"t": 8.35, "dit": "Vingt plis : cent cinq mètres.", "st": "20 plis : 105 mètres."},
+  {"t": 13.05, "dit": "Trente plis : cent sept kilomètres.", "st": "30 plis : 107 kilomètres."},
+  {"t": 15.45, "dit": "Et quarante-deux ?", "st": "Et 42 ?"},
+  {"t": 22.2, "dit": "Quatre cent quarante mille kilomètres. Plus loin que la Lune.", "st": "440 000 kilomètres.\nPlus loin que la Lune."},
+  {"t": 25.9, "dit": "Douze plis de plus : fois quatre mille.", "st": "12 plis de plus : × 4 000."}
+]

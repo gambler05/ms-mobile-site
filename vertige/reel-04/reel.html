@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>VERTIGE — Reel 04</title>
+<style>
+@font-face{font-family:"JBM";font-weight:500;src:url(../reel-01/fonts/jetbrains-mono-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"JBM";font-weight:700;src:url(../reel-01/fonts/jetbrains-mono-latin-700-normal.woff2) format("woff2")}
+html,body{margin:0;background:#000}
+canvas{display:block;width:1080px;height:1920px}
+body.preview canvas{width:auto;height:100vh;margin:0 auto}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* ============================================================
+   VERTIGE — Reel 04 « La feuille pliée 42 fois »
+   Moteur déterministe : renderFrame(n) dessine l'image n (30 i/s).
+   Ouvrir avec ?preview pour une lecture temps réel.
+   ============================================================ */
+const W = 1080, H = 1920, FPS = 30, DURATION = 30.8;
+const C = { ink:'#0A0A0F', ink2:'#14141C', ivory:'#F3EEE3', red:'#FF4A1C', mist:'#8B8B99', graphite:'#2A2A33' };
+const DISPLAY = '"Inter Display","Inter",sans-serif', MONO = '"JBM",monospace';
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const off = document.createElement('canvas'); off.width = W; off.height = H; const octx = off.getContext('2d');
+
+const TL = {
+  hookQ: 1.5, fold: [.75, 1.15, 1.5, 1.8, 2.05, 2.25],
+  c1: [2.8, 4.2], sub1: 4.9, out1: 6.0,
+  c2: [6.2, 8.2], sub2: 8.9, out2: 10.2,
+  c3: [10.4, 12.9], sub3: 13.6, out3: 14.85,
+  q: 15.1, silence: 17.0,
+  c4: [17.4, 22.0], sub4: 22.9,
+  pix1: 24.6, pix2: 25.8,
+  end: 27.8, word: 28.5, tag: 29.05, cta: 29.5,
+};
+/* épaisseurs en millimètres : 0,1 mm × 2^n */
+const F0 = 0.1, T1 = F0 * 2 ** 10, T2 = F0 * 2 ** 20, T3 = F0 * 2 ** 30, T4 = F0 * 2 ** 42;
+const KM = 1e6, MOON = 384400 * KM;
+const XR = 200, YF = 820, AN = 600;       // règle, ligne de lecture, distance jusqu'à la table
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const prog = (t, t0, d) => clamp((t - t0) / d);
+const eio = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const eOut = x => 1 - Math.pow(1 - x, 3);
+const eOut5 = x => 1 - Math.pow(1 - x, 5);
+const eIn = x => x * x * x;
+const eBack = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const nbsp = n => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const font = (w, s, fam = DISPLAY) => `${w} ${s}px ${fam}`;
+const LS = v => { if ('letterSpacing' in ctx) ctx.letterSpacing = v; };
+function fit(text, w, fam, maxW, maxS, ls = 0) { ctx.font = font(w, 100, fam); LS('0px'); const m = ctx.measureText(text).width + ls * text.length; return Math.min(maxS, 100 * maxW / m); }
+
+/* ---------- caméra (on monte) ---------- */
+const SEGS = [[TL.c1, F0, T1, 4.5], [TL.c2, T1, T2, 5], [TL.c3, T2, T3, 6], [TL.c4, T3, T4, 7.5]];
+function cam(t) {
+  for (const [[a, b], f0, f1, G] of SEGS) if (t >= a && t < b) { const u = (t - a) / (b - a), e = eio(u); return { F: f0 * Math.pow(f1 / f0, e), g: 1 + G * Math.pow(Math.sin(Math.PI * e), 2), falling: true, u }; }
+  const F = t < TL.c1[0] ? F0 : t < TL.c2[0] ? T1 : t < TL.c3[0] ? T2 : t < TL.c4[0] ? T3 : T4;
+  return { F, g: 1, falling: false, u: 0 };
+}
+const yOf = (d, c) => YF - AN * c.g * (d / c.F - 1);
+
+/* ---------- fond, étoiles, feuilles ---------- */
+const grain = document.createElement('canvas'); grain.width = 360; grain.height = 640;
+{ const g = grain.getContext('2d'), id = g.createImageData(360, 640), r = rng(7);
+  for (let i = 0; i < id.data.length; i += 4) { const v = r() * 255; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; } g.putImageData(id, 0, 0); }
+const DUST = (() => { const r = rng(42); return Array.from({ length: 90 }, () => ({ x: r() * W, p: r(), z: .35 + r() * 1.4, s: 1 + r() * 2 })); })();
+const STARS = (() => { const r = rng(404); return Array.from({ length: 150 }, () => ({ x: r() * W, y: r() * H, s: .7 + r() * 1.9, tw: r() * 6, z: .2 + r() })); })();
+const SHEETS = (() => { const r = rng(4242); return Array.from({ length: 40 }, () => ({ x: 270 + r() * 850, p: r(), z: .35 + r() * 1.35, a0: r() * 6.28, sp: .6 + r() * 1.6, tilt: (r() - .5) * 1.2, red: r() < .1 })).sort((a, b) => a.z - b.z); })();
+const altitude = c => clamp((Math.log10(c.F) - 6.6) / 1.6);            // 0 au sol → 1 dans l'espace
+function background(t, c) {
+  ctx.fillStyle = C.ink; ctx.fillRect(0, 0, W, H);
+  const a = altitude(c), low = clamp(Math.log10(c.F / F0) / 7.6);
+  const g = ctx.createRadialGradient(W * .5, YF + 300, 60, W * .5, YF + 300, 1400);
+  g.addColorStop(0, `rgba(${Math.round(lerp(34 + 26 * low, 16, a))},${Math.round(lerp(30 + 4 * low, 20, a))},${Math.round(lerp(46 - 8 * low, 44, a))},1)`);
+  g.addColorStop(1, 'rgba(10,10,15,1)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  if (a > 0) for (const s of STARS) {            // les étoiles apparaissent en quittant l'atmosphère
+    const y = (s.y + Math.log(c.F) * 60 * s.z) % H;
+    ctx.globalAlpha = a * (.25 + .5 * s.z) * (.65 + .35 * Math.sin(t * 2.2 + s.tw)); ctx.fillStyle = C.ivory; ctx.beginPath(); ctx.arc(s.x, y, s.s, 0, 7); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+function speedOf(t, c) { return (Math.log(c.F) - Math.log(cam(t - 1 / FPS).F)) * FPS; }
+function dust(t, c, alpha) {
+  const L = Math.log(c.F), v = speedOf(t, c);
+  for (const p of DUST) {
+    let ph = (p.p + L * p.z * .16 + t * .004 * p.z) % 1; if (ph < 0) ph += 1;
+    const y = ph * (H + 300) - 150, len = Math.min(520, 4 + Math.abs(v) * p.z * 95);
+    ctx.globalAlpha = alpha * (.08 + .26 * (p.z / 1.75)) * (c.falling ? 1 : .55);
+    ctx.fillStyle = C.ivory; ctx.fillRect(p.x, y - len, p.s * (c.falling ? .8 : 1), len);
+  }
+  ctx.globalAlpha = 1;
+}
+// feuilles en 2.5D qui retombent pendant qu'on monte
+function sheets(t, c, alpha) {
+  if (alpha <= 0) return;
+  const L = Math.log(c.F), v = Math.abs(speedOf(t, c));
+  for (const b of SHEETS) {
+    let ph = (b.p + L * b.z * .13 + t * .012 * b.z) % 1; if (ph < 0) ph += 1;
+    const y = ph * (H + 500) - 250, w = 104 * b.z, h = 74 * b.z;
+    const flip = Math.cos(b.a0 + t * b.sp + L * b.z * 2.2), stretch = 1 + Math.min(1.5, v * b.z * .4);
+    const a = alpha * (.10 + .28 * (b.z / 1.7));
+    ctx.strokeStyle = b.red ? C.red : C.ivory; ctx.lineWidth = Math.max(1.5, 2.2 * b.z);
+    for (let gI = (c.falling ? 2 : 0); gI >= 0; gI--) {
+      ctx.save(); ctx.globalAlpha = a / (1 + gI * 1.6);
+      ctx.translate(b.x, y - gI * v * b.z * 26); ctx.rotate(b.tilt + Math.sin(t * .7 + b.a0) * .12);
+      ctx.scale(1, (Math.abs(flip) < .06 ? .06 : flip) * stretch);
+      ctx.strokeRect(-w / 2, -h / 2, w, h);
+      if (b.z > .9 && gI === 0) { ctx.globalAlpha *= .5; ctx.beginPath(); ctx.moveTo(0, -h / 2); ctx.lineTo(0, h / 2); ctx.stroke(); }
+      ctx.restore();
+    }
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- la règle ---------- */
+const UNITS = [
+  { d: .1, f: k => `0,${k} MM` }, { d: 1, f: k => `${k} MM` }, { d: 10, f: k => `${k} CM` }, { d: 100, f: k => `${k * 10} CM` },
+  { d: 1e3, f: k => `${k} M` }, { d: 1e4, f: k => `${k * 10} M` }, { d: 1e5, f: k => `${k * 100} M` },
+  { d: 1e6, f: k => `${k} KM` }, { d: 1e7, f: k => `${k * 10} KM` }, { d: 1e8, f: k => `${k * 100} KM` },
+  { d: 1e9, f: k => `${nbsp(k * 1e3)} KM` }, { d: 1e10, f: k => `${nbsp(k * 1e4)} KM` }, { d: 1e11, f: k => `${nbsp(k * 1e5)} KM` },
+];
+function ruler(c, alpha, labels) {
+  const k = AN * c.g / c.F, y0 = yOf(0, c);
+  ctx.strokeStyle = C.ivory; ctx.fillStyle = C.ivory; ctx.lineCap = 'butt';
+  ctx.globalAlpha = alpha * .9; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(XR, Math.min(H + 10, y0)); ctx.lineTo(XR, -10); ctx.stroke();
+  const dMin = Math.max(0, c.F * (1 + (YF - H - 60) / (AN * c.g))), dMax = c.F * (1 + (YF + 60) / (AN * c.g));
+  for (const u of UNITS) {
+    const sp = u.d * k; if (sp < 7 || sp > 5000) continue;
+    const a = clamp((sp - 7) / 26), len = lerp(16, 86, clamp(sp / 260)), la = clamp((sp - 52) / 30);
+    const k0 = Math.max(1, Math.ceil(dMin / u.d)), k1 = Math.floor(dMax / u.d);
+    for (let i = k0; i <= k1; i++) {
+      if (i % 10 === 0 && sp * 10 <= 5000) continue;          // l'unité supérieure prend le relais
+      const y = yOf(i * u.d, c);
+      ctx.globalAlpha = alpha * a * .85; ctx.lineWidth = sp > 150 ? 3 : 2;
+      ctx.beginPath(); ctx.moveTo(XR, y); ctx.lineTo(XR + len, y); ctx.stroke();
+      if (labels && la > 0) { ctx.globalAlpha = Math.min(1, alpha * (c.falling ? 3 : 1)) * la * .7; ctx.font = font(500, 21, MONO); ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(u.f(i), XR - 18, y); }
+    }
+  }
+  ctx.globalAlpha = 1; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+}
+function landmark(c, mm, label, shown, alpha, moon) {
+  const y = yOf(mm, c); if (y < 240 || y > H - 420) return;
+  const a = alpha * clamp((y - 240) / 160) * clamp((H - 420 - y) / 160) * clamp(Math.abs(y - (YF - 70)) / 90 - 1.4) * clamp((yOf(0, c) - y - 170) / 120);
+  ctx.globalAlpha = a; ctx.strokeStyle = C.ivory; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(XR, y); ctx.lineTo(XR + 150, y); ctx.stroke();
+  ctx.beginPath(); ctx.arc(XR, y, 7, 0, 7); ctx.fillStyle = C.ink; ctx.fill(); ctx.stroke();
+  let x = XR + 170;
+  if (moon) { moonIcon(x + 34, y - 6, 34, a); x += 86; }
+  ctx.globalAlpha = a; ctx.fillStyle = C.ivory; ctx.font = font(800, 44); ctx.fillText(label, x, y + 4);
+  ctx.fillStyle = C.mist; ctx.font = font(500, 24, MONO); ctx.fillText(shown, x + 2, y + 42);
+  ctx.globalAlpha = 1;
+}
+function moonIcon(x, y, r, a) {
+  const g = ctx.createRadialGradient(x - r * .4, y - r * .4, r * .1, x, y, r); g.addColorStop(0, '#F3EEE3'); g.addColorStop(1, '#8B8B99');
+  ctx.globalAlpha = a; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  ctx.fillStyle = 'rgba(10,10,15,.22)'; for (const [dx, dy, s] of [[.3, -.2, .22], [-.35, .3, .28], [.1, .45, .14], [-.2, -.45, .12]]) { ctx.beginPath(); ctx.arc(x + dx * r, y + dy * r, s * r, 0, 7); ctx.fill(); }
+  ctx.globalAlpha = 1;
+}
+function marker(c, d, alpha) { const y = yOf(d, c); if (y < -30 || y > H + 30) return; ctx.globalAlpha = alpha; ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(XR, y, 9, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+function glowDot(x, y, r, a = 1) {
+  const g = ctx.createRadialGradient(x, y, r * .5, x, y, r * 5.5); g.addColorStop(0, 'rgba(255,74,28,.55)'); g.addColorStop(1, 'rgba(255,74,28,0)');
+  ctx.globalAlpha = a; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 5.5, 0, 7); ctx.fill();
+  ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+}
+
+/* ---------- typographie cinétique ---------- */
+function kinetic(text, x, y, fnt, t, t0, o = {}) {
+  const per = o.per ?? .028, dur = o.dur ?? .42, out = o.out ?? 1e9, col = o.color ?? C.ivory;
+  if (t < t0) return 0;
+  const eo = eIn(prog(t, out, .32)); if (eo >= 1) return 0;
+  ctx.font = fnt; ctx.textBaseline = 'alphabetic'; LS(o.ls ?? '0px');
+  let n = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]; if (ch === ' ') continue;
+    const cx = x + ctx.measureText(text.slice(0, i)).width;
+    const p = prog(t, t0 + n * per, dur), e = eBack(p); n++;
+    if (p <= 0) continue;
+    const cw = ctx.measureText(ch).width;
+    ctx.save();
+    ctx.globalAlpha = (o.alpha ?? 1) * clamp(p * 3) * (1 - eo);
+    ctx.translate(cx + cw / 2, y + (1 - e) * (o.rise ?? 70) + eo * (260 + n * 14));       // sortie vers le bas : on monte
+    ctx.scale(lerp(o.s0 ?? 1.25, 1, eOut(p)) * (1 - eo * .25), lerp(o.s0 ?? 1.25, 1, eOut(p)) * (1 + eo * 1.6));
+    ctx.fillStyle = col; ctx.fillText(ch, -cw / 2, 0);
+    ctx.restore();
+  }
+  const w = ctx.measureText(text).width; LS('0px'); ctx.globalAlpha = 1; return w;
+}
+function wipe(text, x, y, fnt, t, t0, o = {}) {
+  if (t < t0) return; const out = o.out ?? 1e9, eo = eIn(prog(t, out, .28)); if (eo >= 1) return;
+  ctx.font = fnt; LS(o.ls ?? '0px');
+  const w = ctx.measureText(text).width, p = eOut5(prog(t, t0, .55)), sz = parseFloat(fnt.match(/(\d+(\.\d+)?)px/)[1]);
+  ctx.save(); ctx.globalAlpha = (o.alpha ?? 1) * (1 - eo); ctx.translate(0, eo * 120);
+  ctx.beginPath(); ctx.rect(x - 4, y - sz * 1.1, (w + 8) * p, sz * 1.5); ctx.clip();
+  ctx.fillStyle = o.color ?? C.ivory; ctx.fillText(text, x + (1 - p) * -24, y);
+  ctx.restore();
+  if (p < 1) { ctx.globalAlpha = 1 - p; ctx.fillStyle = C.red; ctx.fillRect(x + (w + 8) * p, y - sz * .95, 6, sz * 1.15); ctx.globalAlpha = 1; }
+  LS('0px');
+}
+function slam(text, x, y, fnt, t, t0, o = {}) {
+  if (t < t0) return; const out = o.out ?? 1e9, eo = eIn(prog(t, out, .3)); if (eo >= 1) return;
+  const p = prog(t, t0, .38), e = eBack(p), s = lerp(1.9, 1, e), A = (o.alpha ?? 1);
+  ctx.save(); ctx.font = fnt; LS(o.ls ?? '0px'); ctx.globalAlpha = A * clamp(p * 4) * (1 - eo);
+  ctx.translate(x, y + eo * 300); ctx.scale(s * (1 - eo * .2), s * (1 + eo * 1.4));
+  if (p < 1) { ctx.fillStyle = C.red; ctx.globalAlpha *= .8; ctx.fillText(text, (1 - p) * 26, 0); ctx.globalAlpha = A * clamp(p * 4); }
+  ctx.fillStyle = o.color ?? C.ivory; ctx.fillText(text, 0, 0);
+  const w = ctx.measureText(text).width; ctx.restore();
+  const sp = prog(t, t0 + .34, .75);
+  if (sp > 0 && sp < 1 && eo === 0) {
+    const sz = parseFloat(fnt.match(/(\d+(\.\d+)?)px/)[1]);
+    octx.setTransform(1, 0, 0, 1, 0, 0); octx.globalCompositeOperation = 'source-over'; octx.clearRect(0, 0, W, H);
+    octx.font = fnt; if ('letterSpacing' in octx) octx.letterSpacing = o.ls ?? '0px'; octx.fillStyle = '#fff'; octx.fillText(text, x, y);
+    const bx = x - 160 + (w + 320) * eio(sp), g = octx.createLinearGradient(bx - 110, 0, bx + 110, sz * .5);
+    g.addColorStop(0, 'rgba(255,74,28,0)'); g.addColorStop(.5, 'rgba(255,120,70,1)'); g.addColorStop(1, 'rgba(255,74,28,0)');
+    octx.globalCompositeOperation = 'source-in'; octx.fillStyle = g; octx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = A * .9; ctx.drawImage(off, 0, 0);
+  }
+  LS('0px'); ctx.globalAlpha = 1;
+}
+function logo(cx, cy, size, p) {
+  ctx.lineCap = 'butt'; ctx.lineJoin = 'miter'; ctx.strokeStyle = C.ivory;
+  let y = cy - size * .52, s = size;
+  for (let i = 0; i < 4; i++) {
+    const q = eOut5(clamp(p * 4 - i * .75)); if (q > 0) { ctx.globalAlpha = q; ctx.lineWidth = Math.max(3, s * .13); ctx.beginPath(); ctx.moveTo(cx - s * .5, y - (1 - q) * 80); ctx.lineTo(cx, y + s * .46 - (1 - q) * 80); ctx.lineTo(cx + s * .5, y - (1 - q) * 80); ctx.stroke(); }
+    y += s * .40; s *= .58;
+  }
+  ctx.globalAlpha = 1;
+}
+const logoDot = () => ({ x: 540, y: 700 + 300 * .62, r: 300 * .075 });
+
+/* ---------- compteurs pendant la montée ---------- */
+function heightText(F) {
+  if (F < 10) return `${F.toFixed(1).replace('.', ',')} MM`;
+  if (F < 1e3) return `${Math.round(F / 10)} CM`;
+  if (F < 1e6) return `${Math.round(F / 1e3)} M`;
+  const km = F / 1e6, m = Math.pow(10, Math.max(0, Math.floor(Math.log10(km)) - 2)); return `${nbsp(Math.round(km / m) * m)} KM`;
+}
+const foldsOf = F => Math.round(Math.log2(F / F0));
+
+/* ---------- l'accroche : la feuille qu'on plie ---------- */
+function paper(t) {
+  const o0 = TL.c1[0] - .12, eo = eIn(prog(t, o0, .32)); if (eo >= 1) return;
+  const BASE = 1090, CX = 540, PITCH = 6;
+  let k = 0, p = 0; TL.fold.forEach((tf, i) => { const d = i < 3 ? .3 : .2; if (t >= tf + d) k = i + 1; else if (t >= tf) { k = i; p = eio((t - tf) / d); } });
+  const n = 2 ** k, w = 800 / n, x0 = CX - 400 * (1 - eo);
+  const a = clamp(t * 5 + .4) * (1 - eo);
+  ctx.save(); ctx.translate(0, eo * 420);
+  const stack = (x, wd, y, cnt, col) => { ctx.fillStyle = col; for (let i = 0; i < cnt; i++) ctx.fillRect(Math.min(x, x + wd), y - i * PITCH - 4, Math.abs(wd), 4); };
+  // table
+  ctx.globalAlpha = a * .5; ctx.fillStyle = C.mist; ctx.fillRect(110, BASE + 6, 860, 2);
+  if (p > 0) {                                   // pli en cours : la moitié droite passe par-dessus la gauche
+    ctx.globalAlpha = a; stack(x0, w / 2, BASE, n, C.ivory);
+    const c = Math.cos(Math.PI * p);
+    ctx.globalAlpha = a * (.75 + .25 * p);
+    stack(x0 + w / 2, (w / 2) * c, BASE - n * PITCH * p - Math.sin(Math.PI * p) * (30 + n * .6), n, p < .5 ? C.ivory : '#CFCABF');
+    ctx.globalAlpha = a * Math.sin(Math.PI * p); ctx.fillStyle = C.red; ctx.fillRect(x0 + w / 2 - 2, BASE - n * PITCH - 14, 4, n * PITCH + 22);
+  } else { ctx.globalAlpha = a; stack(x0, w, BASE, n, C.ivory); }
+  ctx.restore();
+  // compteur
+  const shown = k + (p > .5 ? 1 : 0);
+  ctx.globalAlpha = a; ctx.font = font(700, 28, MONO); LS('3px'); ctx.textAlign = 'right';
+  ctx.fillStyle = C.mist; ctx.fillText(`PLI ${shown}`, 970, 1150 + eo * 300);
+  ctx.fillStyle = C.ivory; ctx.textAlign = 'left'; ctx.fillText(`ÉPAISSEUR : ${(F0 * 2 ** shown).toFixed(1).replace('.', ',')} MM`, 110, 1150 + eo * 300); LS('0px'); ctx.globalAlpha = 1;
+}
+
+/* ============================================================
+   IMAGE
+   ============================================================ */
+function renderFrame(n) { draw(n / FPS); }
+function draw(t) {
+  const c = cam(t);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.globalCompositeOperation = 'source-over';
+  let sx = 0, sy = 0, land = null;
+  for (const [tt, amp] of [[TL.c1[1], 10], [TL.c2[1], 16], [TL.c3[1], 24], [TL.c4[1], 38]]) {
+    const d = t - tt; if (d >= 0 && d < .7) { const k = Math.exp(-d * 9) * amp; sx = Math.sin(d * 71) * k * .5; sy = -Math.cos(d * 53) * k; land = { d, amp }; }
+  }
+  background(t, c); ctx.translate(sx, sy);
+
+  const endP = prog(t, TL.end, .55), endE = eio(endP), sceneA = 1 - endE;
+  const isQ = t >= TL.q && t < TL.c4[0], dimK = lerp(1, isQ ? .28 : 1, isQ ? prog(t, TL.q, .3) : 1);
+  dust(t, c, clamp(t / .5) * (0.7 + .3 * sceneA) * (1 - altitude(c) * .6));
+  sheets(t, c, clamp((t - TL.c1[0] + .2) / .5) * sceneA * dimK * (c.falling ? 1 : .6));
+
+  /* ----- règle ----- */
+  const rA = eOut(prog(t, TL.c1[0], .35)) * dimK * sceneA;
+  if (rA > 0) {
+    if (c.falling) { const N = 5; for (let j = 0; j < N; j++) ruler(cam(t - j / (FPS * N) * .9), rA / N * 1.35, j === 0); }
+    else ruler(c, rA, true);
+    [[TL.c1[1], T1], [TL.c2[1], T2], [TL.c3[1], T3], [TL.c4[1], T4]].forEach(([tt, d]) => { if (t >= tt) marker(c, d, rA); });
+    const seg = (s, list) => { if (t >= s[0] && t < s[1] + .2) { const la = rA * (1 - prog(t, s[1] - .35, .35)); list.forEach(l => landmark(c, l[0], l[1], l[2], la, l[3])); } };
+    seg(TL.c2, [[1700, 'TOI', '≈ 1,7 M'], [30000, 'IMMEUBLE DE 10 ÉTAGES', '≈ 30 M']]);
+    seg(TL.c3, [[330000, 'TOUR EIFFEL', '330 M'], [8849000, 'EVEREST', '8 849 M'], [100 * KM, 'LIMITE DE L’ESPACE', '≈ 100 KM']]);
+    seg(TL.c4, [[400 * KM, 'STATION SPATIALE', '≈ 400 KM'], [35786 * KM, 'ORBITE GÉOSTATIONNAIRE', '35 786 KM'], [MOON, 'LA LUNE', '384 400 KM', true]]);
+    if (t >= TL.c4[1]) {                         // la Lune reste visible sous le curseur à l'arrivée
+      const y = yOf(MOON, c), a = rA * eOut(prog(t, TL.c4[1], .4)); moonIcon(XR, y, 15, a);
+      ctx.globalAlpha = a * .9; ctx.fillStyle = C.ivory; ctx.font = font(700, 22, MONO); LS('3px'); ctx.textAlign = 'right'; ctx.fillText('LA LUNE', XR - 26, y + 34); ctx.textAlign = 'left'; LS('0px'); ctx.globalAlpha = 1;
+    }
+    if (c.falling) {
+      const a = rA / dimK * clamp(c.u * 8) * clamp((1 - c.u) * 14);
+      const pl = ctx.createLinearGradient(0, YF - 230, 0, YF + 190); pl.addColorStop(0, 'rgba(10,10,15,0)'); pl.addColorStop(.3, 'rgba(10,10,15,.8)'); pl.addColorStop(.75, 'rgba(10,10,15,.8)'); pl.addColorStop(1, 'rgba(10,10,15,0)');
+      ctx.globalAlpha = a; ctx.fillStyle = pl; ctx.fillRect(XR + 4, YF - 230, W, 420);
+      ctx.fillStyle = C.red; ctx.beginPath(); ctx.moveTo(XR + 14, YF); ctx.lineTo(XR + 52, YF - 20); ctx.lineTo(XR + 52, YF + 20); ctx.fill();
+      ctx.fillRect(XR + 52, YF - 2, W - XR - 52, 4);
+      const dt = heightText(c.F), fs = fit(dt, 900, DISPLAY, 730, 128, -3);
+      ctx.fillStyle = C.ivory; ctx.font = font(900, fs); LS('-3px'); ctx.fillText(dt, XR + 86, YF - 34); LS('0px');
+      ctx.fillStyle = C.mist; ctx.font = font(700, 26, MONO); LS('3px'); ctx.fillText('NOMBRE DE PLIS', XR + 90, YF + 52);
+      ctx.fillStyle = C.red; ctx.font = font(700, 54, MONO); LS('1px'); ctx.fillText(String(foldsOf(c.F)), XR + 90, YF + 112); LS('0px');
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /* ----- point vermillon : la feuille, posée sur la table ----- */
+  const hookDot = { x: 126, y: 318 };
+  const mv = eio(prog(t, TL.c1[0] - .15, .5));
+  let dotX = lerp(hookDot.x, XR, mv), dotY = lerp(hookDot.y, yOf(0, c), mv), dotR = 15;
+  const endDot = logoDot();
+  if (endP > 0) { dotX = lerp(dotX, endDot.x, endE); dotY = lerp(dotY, endDot.y, endE); dotR = lerp(dotR, endDot.r, endE); }
+  const pulse = .5 + .5 * Math.sin(t * 5.2);
+  if (dotY < H + 90) {
+    ctx.globalAlpha = .22 * (1 - pulse) * (endP > 0 ? sceneA : 1); ctx.strokeStyle = C.red; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(dotX, dotY, dotR + 8 + pulse * 22, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+    glowDot(dotX, dotY, dotR);
+    if (mv >= 1 && rA > 0 && endP === 0) { ctx.globalAlpha = rA * clamp((H - 330 - dotY) / 80) * (c.falling ? clamp(1 - c.u * 6) + clamp((c.u - .86) * 8) : 1); ctx.fillStyle = C.red; ctx.font = font(700, 24, MONO); LS('4px'); ctx.fillText('LA TABLE · 0', XR + 34, dotY + 8); LS('0px'); ctx.globalAlpha = 1; }
+  }
+
+  /* ----- onde de choc ----- */
+  if (land) {
+    const p = land.d / .7;
+    for (let i = 0; i < 2; i++) { const q = clamp(p * (1 + i * .45)); ctx.globalAlpha = (1 - q) * (i ? .35 : .8); ctx.strokeStyle = C.red; ctx.lineWidth = 6 * (1 - q) + 1; ctx.beginPath(); ctx.arc(XR, YF, eOut(q) * land.amp * (22 - i * 8), 0, 7); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ----- SCÈNE 0 : accroche ----- */
+  const X0 = 110, o0 = TL.c1[0] - .12;
+  if (t < TL.c1[0] + .4) {
+    kinetic('PLIE UNE FEUILLE', X0 + 44, 330, font(700, 34, MONO), t, 0, { ls: '6px', out: o0, color: C.mist, dur: .2, per: .008, rise: 10, s0: 1 });
+    kinetic('42 FOIS.', X0 - 6, 520, font(900, 200), t, 0, { ls: '-6px', out: o0, per: .035, dur: .3, rise: 150, s0: 1.7 });
+    paper(t);
+    kinetic('ELLE MONTE', X0, 1320, font(900, 112), t, TL.hookQ, { out: o0, color: C.red, ls: '-3px', per: .03 });
+    kinetic('JUSQU’OÙ ?', X0, 1440, font(900, 112), t, TL.hookQ + .25, { out: o0, color: C.red, ls: '-3px', per: .03 });
+  }
+
+  /* ----- blocs « résultat » ----- */
+  const XT = XR + 86;
+  function result(t0, sub0, out, eq, big, small, sub, dim = 1) {
+    if (t < t0) return;
+    wipe(eq, XT + 4, YF - 190, font(700, 34, MONO), t, t0 + .1, { out, color: C.mist, alpha: dim });
+    const fs = fit(big, 900, DISPLAY, 740, 215, -5);
+    slam(big, XT, YF - 14, font(900, fs), t, t0, { out, alpha: dim, ls: '-5px' });
+    const ss = fit(small, 800, DISPLAY, 740, 52);
+    wipe(small, XT + 4, YF + 62, font(800, ss), t, t0 + .35, { out, color: C.red, alpha: dim });
+    wipe(sub, XT + 4, YF + 140, font(500, 30, MONO), t, sub0, { out, alpha: dim * .85 });
+    const lp = eOut(prog(t, t0, .3)) * (1 - prog(t, out, .2)); ctx.globalAlpha = lp * dim; ctx.fillStyle = C.red; ctx.fillRect(XR + 12, YF - 2, 56 * lp, 4); ctx.globalAlpha = 1;
+  }
+  result(TL.c1[1], TL.sub1, TL.out1, '10 PLIS =', '10 CM', 'LA LARGEUR D’UNE MAIN.', 'ÉPAISSEUR × 1 024');
+  result(TL.c2[1], TL.sub2, TL.out2, '20 PLIS =', '105 M', 'UN TERRAIN DE FOOT, DEBOUT.', 'ÉPAISSEUR × 1 048 576');
+  result(TL.c3[1], TL.sub3, TL.out3, '30 PLIS =', '107 KM', 'TU ES DANS L’ESPACE.', 'ÉPAISSEUR × 1 073 741 824');
+  const dim4 = lerp(1, .32, prog(t, TL.pix1, .4)) * sceneA;
+  if (endP < 1) result(TL.c4[1], TL.sub4, 1e9, '42 PLIS =', '439 800 KM', 'PLUS LOIN QUE LA LUNE.', 'AVEC UNE FEUILLE DE 0,1 MM', dim4);
+
+  /* ----- la question ----- */
+  if (t >= TL.q && t < TL.silence + .8) {
+    const out = TL.silence + .28, eo = eIn(prog(t, out, .32));
+    kinetic('ET À', X0, 640, font(900, 110), t, TL.q, { out, ls: '-2px' });
+    slam('42 PLIS ?', X0 - 6, 860, font(900, 200), t, TL.q + .4, { out, color: C.red, ls: '-6px' });
+    const tp = prog(t, TL.q + .5, out - TL.q - .6); if (tp > 0 && eo < 1) { ctx.globalAlpha = (1 - eo); ctx.fillStyle = C.graphite; ctx.fillRect(X0, 930, 860, 6); ctx.fillStyle = C.red; ctx.fillRect(X0, 930, 860 * Math.sqrt(eIn(tp)), 6); ctx.globalAlpha = 1; }
+  }
+
+  /* ----- renversement : douze plis de plus ----- */
+  if (t >= TL.pix1 && endP < 1) {
+    const y0 = yOf(0, c), a = sceneA * sceneA, lp = eOut(prog(t, TL.pix1, .4));
+    ctx.globalAlpha = a * lp; ctx.strokeStyle = C.red; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(XR, y0, 44 + 6 * Math.sin(t * 7), 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(XR + 40, y0 - 20); ctx.lineTo(XR + 40 + 110 * lp, y0 - 20 - 120 * lp); ctx.stroke(); ctx.globalAlpha = 1;
+    wipe('LES 30 PREMIERS PLIS SONT ICI.', XT + 80, y0 - 310, font(700, 30, MONO), t, TL.pix1 + .2, { color: C.ivory, alpha: a });
+    const f1 = fit('12 PLIS DE PLUS :', 900, DISPLAY, 680, 84, -2);
+    kinetic('12 PLIS DE PLUS :', XT + 78, y0 - 215, font(900, f1), t, TL.pix2 - .6, { alpha: a, ls: '-2px' });
+    kinetic('× 4 096.', XT + 76, y0 - 90, font(900, 128), t, TL.pix2, { color: C.red, alpha: a, ls: '-4px', per: .04 });
+  }
+
+  /* ----- carton de fin ----- */
+  if (endP > 0) {
+    logo(540, 700, 300, prog(t, TL.end + .25, .9));
+    const ws = 150; ctx.font = font(900, ws); LS('10px'); const ww = ctx.measureText('VERTIGE').width - 10; LS('0px');
+    kinetic('VERTIGE', 540 - ww / 2, 1150, font(900, ws), t, TL.word, { ls: '10px', per: .05, rise: -120, s0: 1.4 });
+    ctx.font = font(600, 44); const tg = 'Les chiffres qui donnent le vertige.', tw = ctx.measureText(tg).width;
+    wipe(tg, 540 - tw / 2, 1240, font(600, 44), t, TL.tag, { color: C.mist });
+    const cp = eOut5(prog(t, TL.cta, .5));
+    if (cp > 0) {
+      ctx.globalAlpha = cp; ctx.strokeStyle = C.red; ctx.lineWidth = 3; const bw = 800 * cp; ctx.strokeRect(540 - bw / 2, 1370, bw, 170);
+      ctx.fillStyle = C.ivory; ctx.font = font(700, 32, MONO); ctx.textAlign = 'center';
+      ctx.fillText('ENVOIE ÇA À QUELQU’UN QUI', 540, 1442 + (1 - cp) * 20); ctx.fillText('SOUS-ESTIME CE QUI DOUBLE.', 540, 1496 + (1 - cp) * 20); ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    }
+  }
+  finish(t, land);
+}
+function finish(t, land) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.save(); ctx.filter = 'blur(22px)'; ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = .42; ctx.drawImage(cv, 0, 0); ctx.restore(); ctx.filter = 'none';
+  if (land && land.d < .25) { ctx.globalAlpha = (1 - land.d / .25) * .16 * (land.amp / 38); ctx.fillStyle = C.ivory; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  const v = ctx.createRadialGradient(W / 2, H / 2, 500, W / 2, H / 2, 1250); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.6)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  const r = rng(Math.round(t * FPS) + 1); ctx.globalAlpha = .055; ctx.globalCompositeOperation = 'overlay';
+  ctx.drawImage(grain, -r() * 200, -r() * 200, W + 400, H + 400); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+
+/* ---------- couverture ---------- */
+function renderCover() {
+  const c = { F: T4, g: 1, falling: false, u: 0 };
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = 'none'; background(1, c); sheets(9.3, c, .7);
+  ruler(c, .9, true); marker(c, T4, 1); moonIcon(XR, yOf(MOON, c), 15, 1); glowDot(XR, yOf(0, c), 16);
+  ctx.fillStyle = C.red; ctx.font = font(700, 24, MONO); LS('4px'); ctx.fillText('LA TABLE · 0', XR + 34, yOf(0, c) + 8);
+  ctx.fillStyle = C.mist; ctx.fillText('VERTIGE · N°04', XR + 86, 470);
+  ctx.fillStyle = C.ivory; LS('-4px'); ctx.font = font(900, 112); ctx.fillText('UNE FEUILLE', XR + 80, 600); ctx.fillText('PLIÉE', XR + 80, 712);
+  LS('-6px'); ctx.font = font(900, 200); ctx.fillText('42 FOIS.', XR + 74, 900);
+  ctx.fillStyle = C.red; LS('-3px'); ctx.font = font(900, 104); ctx.fillText('ELLE MONTE', XR + 80, 1060); ctx.fillText('JUSQU’OÙ ?', XR + 80, 1172); LS('0px');
+  finish(0, null);
+}
+
+window.ready = Promise.all([document.fonts.load('500 20px JBM'), document.fonts.load('700 20px JBM'), document.fonts.load('900 20px "Inter Display"'), document.fonts.load('800 20px "Inter Display"'), document.fonts.load('600 20px "Inter Display"')]).then(() => { draw(0); return true; });
+if (location.search.includes('preview')) { document.body.classList.add('preview'); const s = performance.now(); (function loop() { draw(((performance.now() - s) / 1000) % DURATION); requestAnimationFrame(loop); })(); }
+</script>
+</body>
+</html>
