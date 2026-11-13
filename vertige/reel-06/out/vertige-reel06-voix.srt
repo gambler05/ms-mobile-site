@@ -1,0 +1,29 @@
+1
+00:00:00,180 --> 00:00:03,277
+Le Soleil est un ballon de foot.
+Où est la Terre ?
+
+2
+00:00:04,750 --> 00:00:07,947
+À 24 mètres.
+Et elle mesure 2 millimètres.
+
+3
+00:00:09,350 --> 00:00:12,097
+Jupiter : une noix, à 123 mètres.
+
+4
+00:00:14,150 --> 00:00:16,244
+Neptune : à 711 mètres.
+
+5
+00:00:16,450 --> 00:00:17,784
+Et l'étoile la plus proche ?
+
+6
+00:00:23,600 --> 00:00:25,615
+À 6 350 kilomètres.
+
+7
+00:00:26,700 --> 00:00:28,375
+L'espace porte bien son nom.

@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>VERTIGE — Reel 06</title>
+<style>
+@font-face{font-family:"JBM";font-weight:500;src:url(../reel-01/fonts/jetbrains-mono-latin-500-normal.woff2) format("woff2")}
+@font-face{font-family:"JBM";font-weight:700;src:url(../reel-01/fonts/jetbrains-mono-latin-700-normal.woff2) format("woff2")}
+html,body{margin:0;background:#000}
+canvas{display:block;width:1080px;height:1920px}
+body.preview canvas{width:auto;height:100vh;margin:0 auto}
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920"></canvas>
+<script>
+/* ============================================================
+   VERTIGE — Reel 06 « Le Soleil est un ballon de foot »
+   Moteur déterministe : renderFrame(n) dessine l'image n (30 i/s).
+   Ouvrir avec ?preview pour une lecture temps réel.
+   ============================================================ */
+const W = 1080, H = 1920, FPS = 30, DURATION = 31.8;
+const C = { ink:'#0A0A0F', ink2:'#14141C', ivory:'#F3EEE3', red:'#FF4A1C', mist:'#8B8B99', graphite:'#2A2A33' };
+const DISPLAY = '"Inter Display","Inter",sans-serif', MONO = '"JBM",monospace';
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const off = document.createElement('canvas'); off.width = W; off.height = H; const octx = off.getContext('2d');
+
+const TL = {
+  hookQ: 1.6,
+  f1: [2.8, 4.6], sub1: 5.4, out1: 6.7,
+  f2: [6.9, 9.2], sub2: 10.0, out2: 11.0,
+  f3: [11.2, 14.0], sub3: 14.8, out3: 15.95,
+  q: 16.2, silence: 18.0,
+  f4: [18.4, 23.4], sub4: 24.3,
+  pix1: 25.8, pix2: 26.9,
+  end: 28.8, word: 29.5, tag: 30.05, cta: 30.5,
+};
+/* maquette : Soleil (1 391 400 km) = ballon de 22 cm. Distances en mètres. */
+const SCALE = 0.22 / 1.3914e9, AU = 149.6e9 * SCALE;
+const F0 = 0.05, T1 = AU, T2 = 778.5e9 * SCALE, T3 = 4.495e12 * SCALE, T4 = 4.246 * 9.4607e15 * SCALE;
+const XR = 200, YF = 1040, AN = 700;
+
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const prog = (t, t0, d) => clamp((t - t0) / d);
+const eio = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const eOut = x => 1 - Math.pow(1 - x, 3);
+const eOut5 = x => 1 - Math.pow(1 - x, 5);
+const eIn = x => x * x * x;
+const eBack = x => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+function rng(seed) { let a = seed >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const nbsp = n => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+const sig3 = v => { const m = Math.pow(10, Math.max(0, Math.floor(Math.log10(v)) - 2)); return Math.round(v / m) * m; };
+const font = (w, s, fam = DISPLAY) => `${w} ${s}px ${fam}`;
+const LS = v => { if ('letterSpacing' in ctx) ctx.letterSpacing = v; };
+function fit(text, w, fam, maxW, maxS, ls = 0) { ctx.font = font(w, 100, fam); LS('0px'); const m = ctx.measureText(text).width + ls * text.length; return Math.min(maxS, 100 * maxW / m); }
+
+/* ---------- caméra ---------- */
+const SEGS = [[TL.f1, F0, T1, 4.5], [TL.f2, T1, T2, 4], [TL.f3, T2, T3, 4], [TL.f4, T3, T4, 8]];
+function cam(t) {
+  for (const [[a, b], f0, f1, G] of SEGS) if (t >= a && t < b) { const u = (t - a) / (b - a), e = eio(u); return { F: f0 * Math.pow(f1 / f0, e), g: 1 + G * Math.pow(Math.sin(Math.PI * e), 2), falling: true, u }; }
+  const F = t < TL.f1[0] ? F0 : t < TL.f2[0] ? T1 : t < TL.f3[0] ? T2 : t < TL.f4[0] ? T3 : T4;
+  return { F, g: 1, falling: false, u: 0 };
+}
+const yOf = (d, c) => YF + AN * c.g * (d / c.F - 1);
+
+/* ---------- espace : fond, étoiles, poussières ---------- */
+const grain = document.createElement('canvas'); grain.width = 360; grain.height = 640;
+{ const g = grain.getContext('2d'), id = g.createImageData(360, 640), r = rng(7);
+  for (let i = 0; i < id.data.length; i += 4) { const v = r() * 255; id.data[i] = id.data[i + 1] = id.data[i + 2] = v; id.data[i + 3] = 255; } g.putImageData(id, 0, 0); }
+const DUST = (() => { const r = rng(42); return Array.from({ length: 100 }, () => ({ x: r() * W, p: r(), z: .35 + r() * 1.4, s: 1 + r() * 2 })); })();
+const STARS = (() => { const r = rng(606); return Array.from({ length: 230 }, () => ({ x: r() * W, y: r() * H, s: .6 + r() * r() * 2.6, tw: r() * 6, z: .15 + r() * .9 })); })();
+function speedOf(t, c) { return (Math.log(c.F) - Math.log(cam(t - 1 / FPS).F)) * FPS; }
+function background(t, c, sunY) {
+  ctx.fillStyle = C.ink; ctx.fillRect(0, 0, W, H);
+  const g = ctx.createRadialGradient(W * .5, YF, 60, W * .5, YF, 1400);
+  g.addColorStop(0, 'rgba(20,22,46,1)'); g.addColorStop(1, 'rgba(9,9,14,1)'); ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  // lueur du Soleil tant qu'il est proche
+  const near = 1 - clamp(Math.log10(c.F / F0) / 4.4);
+  if (near > 0 && sunY > -600) { const sg = ctx.createRadialGradient(XR, sunY, 10, XR, sunY, 1100); sg.addColorStop(0, `rgba(255,96,40,${.30 * near})`); sg.addColorStop(1, 'rgba(255,74,28,0)'); ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H); }
+  const L = Math.log(c.F), v = Math.abs(speedOf(t, c));
+  for (const s of STARS) {
+    let y = (s.y - L * 70 * s.z) % H; if (y < 0) y += H;
+    ctx.globalAlpha = (.22 + .55 * s.z) * (.65 + .35 * Math.sin(t * 2.2 + s.tw)); ctx.fillStyle = C.ivory;
+    const len = Math.min(120, v * s.z * 22);
+    if (len > 3) ctx.fillRect(s.x, y, s.s, len); else { ctx.beginPath(); ctx.arc(s.x, y, s.s, 0, 7); ctx.fill(); }
+  }
+  ctx.globalAlpha = 1;
+}
+function dust(t, c, alpha) {
+  const L = Math.log(c.F), v = speedOf(t, c);
+  for (const p of DUST) {
+    let ph = (p.p - L * p.z * .16 - t * .004 * p.z) % 1; if (ph < 0) ph += 1;
+    const y = ph * (H + 300) - 150, len = Math.min(520, 4 + Math.abs(v) * p.z * 95);
+    ctx.globalAlpha = alpha * (.06 + .22 * (p.z / 1.75)) * (c.falling ? 1 : .4);
+    ctx.fillStyle = C.ivory; ctx.fillRect(p.x, y, p.s * (c.falling ? .8 : 1), len);
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- la règle ---------- */
+const UNITS = [
+  { d: 1e-3, f: k => `${k} MM` }, { d: 1e-2, f: k => `${k} CM` }, { d: .1, f: k => `${k * 10} CM` },
+  { d: 1, f: k => `${k} M` }, { d: 10, f: k => `${k * 10} M` }, { d: 100, f: k => `${k * 100} M` },
+  { d: 1e3, f: k => `${k} KM` }, { d: 1e4, f: k => `${k * 10} KM` }, { d: 1e5, f: k => `${k * 100} KM` }, { d: 1e6, f: k => `${nbsp(k * 1000)} KM` }, { d: 1e7, f: k => `${nbsp(k * 10000)} KM` },
+];
+function ruler(c, alpha, labels) {
+  const k = AN * c.g / c.F, y0 = yOf(0, c);
+  ctx.strokeStyle = C.ivory; ctx.fillStyle = C.ivory; ctx.lineCap = 'butt';
+  ctx.globalAlpha = alpha * .9; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(XR, Math.max(-10, y0)); ctx.lineTo(XR, H + 10); ctx.stroke();
+  const dMin = Math.max(0, c.F * (1 + (-60 - YF) / (AN * c.g))), dMax = c.F * (1 + (H + 60 - YF) / (AN * c.g));
+  for (const u of UNITS) {
+    const sp = u.d * k; if (sp < 7 || sp > 5000) continue;
+    const a = clamp((sp - 7) / 26), len = lerp(16, 86, clamp(sp / 260)), la = clamp((sp - 52) / 30);
+    const k0 = Math.max(1, Math.ceil(dMin / u.d)), k1 = Math.floor(dMax / u.d);
+    for (let i = k0; i <= k1; i++) {
+      if (i % 10 === 0 && sp * 10 <= 5000) continue;
+      const y = yOf(i * u.d, c);
+      ctx.globalAlpha = alpha * a * .85; ctx.lineWidth = sp > 150 ? 3 : 2;
+      ctx.beginPath(); ctx.moveTo(XR, y); ctx.lineTo(XR + len, y); ctx.stroke();
+      if (labels && la > 0) { ctx.globalAlpha = Math.min(1, alpha * (c.falling ? 3 : 1)) * la * .7; ctx.font = font(500, 21, MONO); ctx.textAlign = 'right'; ctx.textBaseline = 'middle'; ctx.fillText(u.f(i), XR - 18, y); }
+    }
+  }
+  ctx.globalAlpha = 1; ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+}
+// petite planète stylisée (r en px), anneaux pour Saturne
+function planet(x, y, r, a, ring) {
+  const g = ctx.createRadialGradient(x - r * .4, y - r * .4, r * .1, x, y, r); g.addColorStop(0, '#F3EEE3'); g.addColorStop(1, '#6F6F80');
+  ctx.globalAlpha = a; ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  if (ring) { ctx.strokeStyle = C.ivory; ctx.lineWidth = Math.max(2, r * .16); ctx.beginPath(); ctx.ellipse(x, y, r * 1.9, r * .55, -.35, 0, 7); ctx.stroke(); }
+  ctx.globalAlpha = 1;
+}
+function landmark(c, d, label, shown, alpha, r, ring) {
+  const y = yOf(d, c); if (y < 240 || y > H - 400) return;
+  const a = alpha * clamp((y - 240) / 160) * clamp((H - 400 - y) / 160) * clamp(Math.abs(y - (YF - 70)) / 90 - 1.4) * clamp((y - yOf(0, c) - 170) / 120);
+  if (a <= 0) return;
+  ctx.globalAlpha = a; ctx.strokeStyle = C.ivory; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(XR, y); ctx.lineTo(XR + 150, y); ctx.stroke();
+  ctx.beginPath(); ctx.arc(XR, y, 7, 0, 7); ctx.fillStyle = C.ink; ctx.fill(); ctx.stroke();
+  let x = XR + 170;
+  if (r) { planet(x + r + (ring ? r : 0), y - 4, r, a, ring); x += 2 * r + (ring ? 2 * r : 0) + 26; }
+  ctx.globalAlpha = a; ctx.fillStyle = r ? C.ivory : C.mist; ctx.font = font(800, 44); ctx.fillText(label, x, y + 4);
+  ctx.fillStyle = C.mist; ctx.font = font(500, 24, MONO); ctx.fillText(shown, x + 2, y + 42);
+  ctx.globalAlpha = 1;
+}
+function marker(c, d, alpha, r, star) {
+  const y = yOf(d, c); if (y < -30 || y > H + 30) return;
+  if (star) { ctx.globalAlpha = alpha; ctx.strokeStyle = C.ivory; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(XR, y, 13, 0, 7); ctx.stroke(); ctx.fillStyle = C.red; ctx.beginPath(); ctx.arc(XR, y, 5, 0, 7); ctx.fill(); ctx.globalAlpha = 1; }
+  else planet(XR, y, r, alpha);
+}
+/* ---------- le Soleil-ballon ---------- */
+function sunBall(x, y, r, t, a = 1) {
+  const glow = ctx.createRadialGradient(x, y, r * .6, x, y, r * (3.2 + .15 * Math.sin(t * 3))); glow.addColorStop(0, 'rgba(255,90,36,.55)'); glow.addColorStop(1, 'rgba(255,74,28,0)');
+  ctx.globalAlpha = a; ctx.fillStyle = glow; ctx.beginPath(); ctx.arc(x, y, r * 3.4, 0, 7); ctx.fill();
+  const g = ctx.createRadialGradient(x - r * .35, y - r * .4, r * .08, x, y, r); g.addColorStop(0, '#FF9A5C'); g.addColorStop(.6, '#FF4A1C'); g.addColorStop(1, '#C22E0C');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill();
+  if (r > 26) {                                   // coutures du ballon
+    ctx.save(); ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.clip(); ctx.globalAlpha = a * clamp((r - 26) / 40) * .75; ctx.strokeStyle = '#3A0E04'; ctx.fillStyle = 'rgba(58,14,4,.35)'; ctx.lineWidth = Math.max(2, r * .022); ctx.lineJoin = 'round';
+    const a0 = -Math.PI / 2 + t * .22, P = i => [x + Math.cos(a0 + i * 2 * Math.PI / 5) * r * .34, y + Math.sin(a0 + i * 2 * Math.PI / 5) * r * .34];
+    ctx.beginPath(); for (let i = 0; i < 5; i++) { const [px, py] = P(i); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); } ctx.closePath(); ctx.fill(); ctx.stroke();
+    for (let i = 0; i < 5; i++) {
+      const an = a0 + i * 2 * Math.PI / 5, [px, py] = P(i), mx = x + Math.cos(an) * r * .68, my = y + Math.sin(an) * r * .68;
+      ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(mx, my);
+      for (const s of [-1, 1]) { ctx.moveTo(mx, my); ctx.lineTo(x + Math.cos(an + s * .42) * r * .9, y + Math.sin(an + s * .42) * r * .9); ctx.lineTo(x + Math.cos(an + s * .52) * r * 1.02, y + Math.sin(an + s * .52) * r * 1.02); }
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+  ctx.globalAlpha = 1;
+}
+
+/* ---------- typographie cinétique ---------- */
+function kinetic(text, x, y, fnt, t, t0, o = {}) {
+  const per = o.per ?? .028, dur = o.dur ?? .42, out = o.out ?? 1e9, col = o.color ?? C.ivory;
+  if (t < t0) return 0;
+  const eo = eIn(prog(t, out, .32)); if (eo >= 1) return 0;
+  ctx.font = fnt; ctx.textBaseline = 'alphabetic'; LS(o.ls ?? '0px');
+  let n = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]; if (ch === ' ') continue;
+    const cx = x + ctx.measureText(text.slice(0, i)).width;
+    const p = prog(t, t0 + n * per, dur), e = eBack(p); n++;
+    if (p <= 0) continue;
+    const cw = ctx.measureText(ch).width;
+    ctx.save();
+    ctx.globalAlpha = (o.alpha ?? 1) * clamp(p * 3) * (1 - eo);
+    ctx.translate(cx + cw / 2, y + (1 - e) * (o.rise ?? 70) - eo * (260 + n * 14));
+    ctx.scale(lerp(o.s0 ?? 1.25, 1, eOut(p)) * (1 - eo * .25), lerp(o.s0 ?? 1.25, 1, eOut(p)) * (1 + eo * 1.6));
+    ctx.fillStyle = col; ctx.fillText(ch, -cw / 2, 0);
+    ctx.restore();
+  }
+  const w = ctx.measureText(text).width; LS('0px'); ctx.globalAlpha = 1; return w;
+}
+function wipe(text, x, y, fnt, t, t0, o = {}) {
+  if (t < t0) return; const out = o.out ?? 1e9, eo = eIn(prog(t, out, .28)); if (eo >= 1) return;
+  ctx.font = fnt; LS(o.ls ?? '0px');
+  const w = ctx.measureText(text).width, p = eOut5(prog(t, t0, .55)), sz = parseFloat(fnt.match(/(\d+(\.\d+)?)px/)[1]);
+  ctx.save(); ctx.globalAlpha = (o.alpha ?? 1) * (1 - eo); ctx.translate(0, -eo * 120);
+  ctx.beginPath(); ctx.rect(x - 4, y - sz * 1.1, (w + 8) * p, sz * 1.5); ctx.clip();
+  ctx.fillStyle = o.color ?? C.ivory; ctx.fillText(text, x + (1 - p) * -24, y);
+  ctx.restore();
+  if (p < 1) { ctx.globalAlpha = 1 - p; ctx.fillStyle = C.ivory; ctx.fillRect(x + (w + 8) * p, y - sz * .95, 6, sz * 1.15); ctx.globalAlpha = 1; }
+  LS('0px');
+}
+function slam(text, x, y, fnt, t, t0, o = {}) {
+  if (t < t0) return; const out = o.out ?? 1e9, eo = eIn(prog(t, out, .3)); if (eo >= 1) return;
+  const p = prog(t, t0, .38), e = eBack(p), s = lerp(1.9, 1, e), A = (o.alpha ?? 1);
+  ctx.save(); ctx.font = fnt; LS(o.ls ?? '0px'); ctx.globalAlpha = A * clamp(p * 4) * (1 - eo);
+  ctx.translate(x, y - eo * 300); ctx.scale(s * (1 - eo * .2), s * (1 + eo * 1.4));
+  if (p < 1) { ctx.fillStyle = C.red; ctx.globalAlpha *= .8; ctx.fillText(text, (1 - p) * 26, 0); ctx.globalAlpha = A * clamp(p * 4); }
+  ctx.fillStyle = o.color ?? C.ivory; ctx.fillText(text, 0, 0);
+  const w = ctx.measureText(text).width; ctx.restore();
+  const sp = prog(t, t0 + .34, .75);
+  if (sp > 0 && sp < 1 && eo === 0) {
+    const sz = parseFloat(fnt.match(/(\d+(\.\d+)?)px/)[1]);
+    octx.setTransform(1, 0, 0, 1, 0, 0); octx.globalCompositeOperation = 'source-over'; octx.clearRect(0, 0, W, H);
+    octx.font = fnt; if ('letterSpacing' in octx) octx.letterSpacing = o.ls ?? '0px'; octx.fillStyle = '#fff'; octx.fillText(text, x, y);
+    const bx = x - 160 + (w + 320) * eio(sp), g = octx.createLinearGradient(bx - 110, 0, bx + 110, sz * .5);
+    g.addColorStop(0, 'rgba(255,74,28,0)'); g.addColorStop(.5, 'rgba(255,120,70,1)'); g.addColorStop(1, 'rgba(255,74,28,0)');
+    octx.globalCompositeOperation = 'source-in'; octx.fillStyle = g; octx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = A * .9; ctx.drawImage(off, 0, 0);
+  }
+  LS('0px'); ctx.globalAlpha = 1;
+}
+function logo(cx, cy, size, p) {
+  ctx.lineCap = 'butt'; ctx.lineJoin = 'miter'; ctx.strokeStyle = C.ivory;
+  let y = cy - size * .52, s = size;
+  for (let i = 0; i < 4; i++) {
+    const q = eOut5(clamp(p * 4 - i * .75)); if (q > 0) { ctx.globalAlpha = q; ctx.lineWidth = Math.max(3, s * .13); ctx.beginPath(); ctx.moveTo(cx - s * .5, y - (1 - q) * 80); ctx.lineTo(cx, y + s * .46 - (1 - q) * 80); ctx.lineTo(cx + s * .5, y - (1 - q) * 80); ctx.stroke(); }
+    y += s * .40; s *= .58;
+  }
+  ctx.globalAlpha = 1;
+}
+const logoDot = () => ({ x: 540, y: 700 + 300 * .62, r: 300 * .075 });
+
+/* ---------- compteurs pendant la chute ---------- */
+function distText(F) {
+  if (F < 1) return `${Math.round(F * 100)} CM`;
+  if (F < 10) return `${F.toFixed(1).replace('.', ',')} M`;
+  if (F < 1000) return `${Math.round(F)} M`;
+  const km = F / 1000; return km < 10 ? `${km.toFixed(1).replace('.', ',')} KM` : `${nbsp(sig3(km))} KM`;
+}
+function realText(F) {                             // la distance réelle correspondante
+  const km = F / SCALE / 1000;
+  if (km < 1e6) return `${nbsp(sig3(km))} KM`;
+  if (km < 1e9) return `${nbsp(sig3(km / 1e6))} MILLIONS DE KM`;
+  if (km < 9.4607e11) return `${String(sig3(km / 1e9 * 10) / 10).replace('.', ',')} MILLIARDS DE KM`;
+  return `${(km / 9.4607e12).toFixed(2).replace('.', ',')} ANNÉE${km / 9.4607e12 >= 2 ? 'S' : ''}-LUMIÈRE`;
+}
+
+/* ============================================================
+   IMAGE
+   ============================================================ */
+function renderFrame(n) { draw(n / FPS); }
+function draw(t) {
+  const c = cam(t);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 1; ctx.filter = 'none'; ctx.globalCompositeOperation = 'source-over';
+  let sx = 0, sy = 0, land = null;
+  for (const [tt, amp] of [[TL.f1[1], 12], [TL.f2[1], 18], [TL.f3[1], 24], [TL.f4[1], 38]]) {
+    const d = t - tt; if (d >= 0 && d < .7) { const k = Math.exp(-d * 9) * amp; sx = Math.sin(d * 71) * k * .5; sy = Math.cos(d * 53) * k; land = { d, amp }; }
+  }
+  const endP = prog(t, TL.end, .55), endE = eio(endP), sceneA = 1 - endE;
+  /* position du Soleil (le point vermillon) */
+  const hook = { x: 540, y: 960, r: 175 };
+  const mv = eio(prog(t, TL.f1[0] - .2, .55));
+  let dotX = lerp(hook.x, XR, mv), dotY = lerp(hook.y, yOf(0, c), mv), dotR = lerp(hook.r, 16, mv);
+  const endDot = logoDot();
+  if (endP > 0) { dotX = lerp(dotX, endDot.x, endE); dotY = lerp(dotY, endDot.y, endE); dotR = lerp(dotR, endDot.r, endE); }
+
+  background(t, c, dotY); ctx.translate(sx, sy);
+  const isQ = t >= TL.q && t < TL.f4[0], dimK = lerp(1, isQ ? .28 : 1, isQ ? prog(t, TL.q, .3) : 1);
+  dust(t, c, clamp(t / .5) * sceneA);
+
+  /* ----- règle ----- */
+  const rA = eOut(prog(t, TL.f1[0], .35)) * dimK * sceneA;
+  if (rA > 0) {
+    if (c.falling) { const N = 5; for (let j = 0; j < N; j++) ruler(cam(t - j / (FPS * N) * .9), rA / N * 1.35, j === 0); }
+    else ruler(c, rA, true);
+    if (t >= TL.f1[1]) marker(c, T1, rA, 6); if (t >= TL.f2[1]) marker(c, T2, rA, 10); if (t >= TL.f3[1]) marker(c, T3, rA, 8); if (t >= TL.f4[1]) marker(c, T4, rA, 0, true);
+    const seg = (s, list) => { if (t >= s[0] && t < s[1] + .2) { const la = rA * (1 - prog(t, s[1] - .3, .3)); list.forEach(l => landmark(c, l[0], l[1], l[2], la, l[3], l[4])); } };
+    seg(TL.f1, [[57.9e9 * SCALE, 'MERCURE', '9 M · 0,8 MM', 12], [108.2e9 * SCALE, 'VÉNUS', '17 M · 1,9 MM', 17]]);
+    seg(TL.f2, [[227.9e9 * SCALE, 'MARS', '36 M · 1 MM', 14]]);
+    seg(TL.f3, [[1.4335e12 * SCALE, 'SATURNE', '227 M · 18 MM', 22, true], [2.8725e12 * SCALE, 'URANUS', '454 M · 8 MM', 17]]);
+    seg(TL.f4, [[4092, 'VOYAGER 1', '≈ 4 KM', 0], [1e5, 'RIEN.', '100 KM', 0], [1e6, 'TOUJOURS RIEN.', '1 000 KM', 0]]);
+    if (c.falling) {
+      const a = rA / dimK * clamp(c.u * 8) * clamp((1 - c.u) * 14);
+      const pl = ctx.createLinearGradient(0, YF - 230, 0, YF + 190); pl.addColorStop(0, 'rgba(10,10,15,0)'); pl.addColorStop(.3, 'rgba(10,10,15,.8)'); pl.addColorStop(.75, 'rgba(10,10,15,.8)'); pl.addColorStop(1, 'rgba(10,10,15,0)');
+      ctx.globalAlpha = a; ctx.fillStyle = pl; ctx.fillRect(XR + 4, YF - 230, W, 420);
+      ctx.fillStyle = C.ivory; ctx.beginPath(); ctx.moveTo(XR + 14, YF); ctx.lineTo(XR + 52, YF - 20); ctx.lineTo(XR + 52, YF + 20); ctx.fill();
+      ctx.fillRect(XR + 52, YF - 2, W - XR - 52, 4);
+      const dt = distText(c.F), fs = fit(dt, 900, DISPLAY, 730, 128, -3);
+      ctx.font = font(900, fs); LS('-3px'); ctx.fillText(dt, XR + 86, YF - 34); LS('0px');
+      ctx.fillStyle = C.mist; ctx.font = font(700, 26, MONO); LS('3px'); ctx.fillText('EN VRAI', XR + 90, YF + 52);
+      ctx.fillStyle = C.ivory; ctx.font = font(700, 36, MONO); LS('1px'); ctx.fillText(realText(c.F), XR + 90, YF + 100); LS('0px');
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  /* ----- le Soleil ----- */
+  if (dotY > -400) {
+    sunBall(dotX, dotY, dotR, t, clamp(t * 5 + .5));
+    const lab = (1 - mv) * (1 - eIn(prog(t, TL.f1[0] - .3, .3)));
+    if (lab > 0) {                                  // cote du ballon
+      const y = hook.y + hook.r + 62, p = eOut(prog(t, .5, .5));
+      ctx.globalAlpha = lab * p; ctx.strokeStyle = ctx.fillStyle = C.ivory; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(hook.x - hook.r * p, y); ctx.lineTo(hook.x + hook.r * p, y); ctx.moveTo(hook.x - hook.r * p, y - 14); ctx.lineTo(hook.x - hook.r * p, y + 14); ctx.moveTo(hook.x + hook.r * p, y - 14); ctx.lineTo(hook.x + hook.r * p, y + 14); ctx.stroke();
+      ctx.font = font(700, 34, MONO); ctx.textAlign = 'center'; LS('3px'); ctx.fillText('22 CM', hook.x, y + 56); ctx.textAlign = 'left'; LS('0px'); ctx.globalAlpha = 1;
+    }
+    if (mv >= 1 && rA > 0 && endP === 0) { ctx.globalAlpha = rA * clamp((dotY - 150) / 80) * (c.falling ? clamp(1 - c.u * 6) + clamp((c.u - .86) * 8) : 1); ctx.fillStyle = C.red; ctx.font = font(700, 24, MONO); LS('4px'); ctx.fillText('LE SOLEIL · 22 CM', XR + 34, dotY + 8); LS('0px'); ctx.globalAlpha = 1; }
+  }
+
+  /* ----- onde de choc ----- */
+  if (land) {
+    const p = land.d / .7;
+    for (let i = 0; i < 2; i++) { const q = clamp(p * (1 + i * .45)); ctx.globalAlpha = (1 - q) * (i ? .3 : .7); ctx.strokeStyle = C.ivory; ctx.lineWidth = 6 * (1 - q) + 1; ctx.beginPath(); ctx.arc(XR, YF, eOut(q) * land.amp * (22 - i * 8), 0, 7); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+  }
+
+  /* ----- SCÈNE 0 : accroche ----- */
+  const X0 = 110, o0 = TL.f1[0] - .12;
+  if (t < TL.f1[0] + .4) {
+    kinetic('LE SOLEIL EST', X0, 330, font(700, 34, MONO), t, 0, { ls: '6px', out: o0, color: C.mist, dur: .2, per: .008, rise: 10, s0: 1 });
+    kinetic('UN BALLON', X0 - 4, 460, font(900, 128), t, 0, { ls: '-4px', out: o0, per: .03, dur: .3, rise: 150, s0: 1.7 });
+    kinetic('DE FOOT.', X0 - 4, 590, font(900, 128), t, .3, { ls: '-4px', out: o0, per: .03, dur: .3, rise: 150, s0: 1.7 });
+    const qs = fit('OÙ EST LA TERRE ?', 900, DISPLAY, 860, 112, -2);
+    kinetic('OÙ EST LA TERRE ?', X0, 1420, font(900, qs), t, TL.hookQ, { out: o0, ls: '-2px', per: .03 });
+  }
+
+  /* ----- blocs « résultat » ----- */
+  const XT = XR + 86;
+  function result(t0, sub0, out, eq, big, small, sub, dim = 1) {
+    if (t < t0) return;
+    wipe(eq, XT + 4, YF - 190, font(700, fit(eq, 700, MONO, 740, 32), MONO), t, t0 + .1, { out, color: C.mist, alpha: dim });
+    const fs = fit(big, 900, DISPLAY, 740, 215, -5);
+    slam(big, XT, YF - 14, font(900, fs), t, t0, { out, alpha: dim, ls: '-5px' });
+    wipe(small, XT + 4, YF + 62, font(800, fit(small, 800, DISPLAY, 740, 52)), t, t0 + .35, { out, alpha: dim });
+    wipe(sub, XT + 4, YF + 150, font(600, 40), t, sub0, { out, color: C.mist, alpha: dim });
+    const lp = eOut(prog(t, t0, .3)) * (1 - prog(t, out, .2)); ctx.globalAlpha = lp * dim; ctx.fillStyle = C.ivory; ctx.fillRect(XR + 16, YF - 2, 52 * lp, 4); ctx.globalAlpha = 1;
+  }
+  result(TL.f1[1], TL.sub1, TL.out1, 'LA TERRE EST À', '24 M', 'ET ELLE MESURE 2 MM.', 'La Lune tourne à 6 cm d’elle.');
+  result(TL.f2[1], TL.sub2, TL.out2, 'JUPITER EST À', '123 M', 'DE LA TAILLE D’UNE NOIX.', 'Entre les deux : presque rien.');
+  result(TL.f3[1], TL.sub3, TL.out3, 'NEPTUNE EST À', '711 M', 'UN PETIT POIS.', 'C’était la dernière planète.');
+  const dim4 = lerp(1, .32, prog(t, TL.pix1, .4)) * sceneA;
+  if (endP < 1) result(TL.f4[1], TL.sub4, 1e9, 'PROXIMA DU CENTAURE EST À', '6 350 KM', 'UNE BALLE DE PING-PONG.', 'Plus loin que Paris–New York.', dim4);
+
+  /* ----- la question ----- */
+  if (t >= TL.q && t < TL.silence + .8) {
+    const out = TL.silence + .28, eo = eIn(prog(t, out, .32));
+    kinetic('ET L’ÉTOILE', X0, 780, font(900, 124), t, TL.q, { out, ls: '-3px' });
+    const qs = fit('LA PLUS PROCHE ?', 900, DISPLAY, 860, 124, -3);
+    kinetic('LA PLUS PROCHE ?', X0, 910, font(900, qs), t, TL.q + .3, { out, ls: '-3px', per: .026 });
+    const tp = prog(t, TL.q + .5, out - TL.q - .6); if (tp > 0 && eo < 1) { ctx.globalAlpha = (1 - eo); ctx.fillStyle = C.graphite; ctx.fillRect(X0, 980, 860, 6); ctx.fillStyle = C.ivory; ctx.fillRect(X0, 980, 860 * Math.sqrt(eIn(tp)), 6); ctx.globalAlpha = 1; }
+  }
+
+  /* ----- renversement : tout le système solaire tient dans le point ----- */
+  if (t >= TL.pix1 && endP < 1) {
+    const y0 = yOf(0, c), a = sceneA * sceneA, lp = eOut(prog(t, TL.pix1, .4));
+    ctx.globalAlpha = a * lp; ctx.strokeStyle = C.ivory; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.arc(XR, y0, 48 + 6 * Math.sin(t * 7), 0, 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(XR + 46, y0 + 14); ctx.lineTo(XR + 46 + 120 * lp, y0 + 14 + 140 * lp); ctx.stroke(); ctx.globalAlpha = 1;
+    wipe('LES 8 PLANÈTES SONT TOUTES ICI.', XT + 90, y0 + 200, font(700, 30, MONO), t, TL.pix1 + .2, { color: C.mist, alpha: a });
+    const f1 = fit('L’ESPACE PORTE', 900, DISPLAY, 670, 100, -3);
+    kinetic('L’ESPACE PORTE', XT + 86, y0 + 310, font(900, f1), t, TL.pix2 - .5, { alpha: a, ls: '-3px' });
+    kinetic('BIEN SON NOM.', XT + 86, y0 + 310 + f1 * 1.15, font(900, f1), t, TL.pix2, { alpha: a, ls: '-3px', per: .035 });
+  }
+
+  /* ----- carton de fin ----- */
+  if (endP > 0) {
+    logo(540, 700, 300, prog(t, TL.end + .25, .9));
+    const ws = 150; ctx.font = font(900, ws); LS('10px'); const ww = ctx.measureText('VERTIGE').width - 10; LS('0px');
+    kinetic('VERTIGE', 540 - ww / 2, 1150, font(900, ws), t, TL.word, { ls: '10px', per: .05, rise: -120, s0: 1.4 });
+    ctx.font = font(600, 44); const tg = 'Les chiffres qui donnent le vertige.', tw = ctx.measureText(tg).width;
+    wipe(tg, 540 - tw / 2, 1240, font(600, 44), t, TL.tag, { color: C.mist });
+    const cp = eOut5(prog(t, TL.cta, .5));
+    if (cp > 0) {
+      ctx.globalAlpha = cp; ctx.strokeStyle = C.red; ctx.lineWidth = 3; const bw = 800 * cp; ctx.strokeRect(540 - bw / 2, 1370, bw, 170);
+      ctx.fillStyle = C.ivory; ctx.font = font(700, 32, MONO); ctx.textAlign = 'center';
+      ctx.fillText('ENVOIE ÇA À QUELQU’UN QUI', 540, 1442 + (1 - cp) * 20); ctx.fillText('CROIT LES SCHÉMAS D’ÉCOLE.', 540, 1496 + (1 - cp) * 20); ctx.textAlign = 'left'; ctx.globalAlpha = 1;
+    }
+  }
+  finish(t, land);
+}
+function finish(t, land) {
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.save(); ctx.filter = 'blur(22px)'; ctx.globalCompositeOperation = 'screen'; ctx.globalAlpha = .42; ctx.drawImage(cv, 0, 0); ctx.restore(); ctx.filter = 'none';
+  if (land && land.d < .25) { ctx.globalAlpha = (1 - land.d / .25) * .16 * (land.amp / 38); ctx.fillStyle = C.ivory; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  const v = ctx.createRadialGradient(W / 2, H / 2, 500, W / 2, H / 2, 1250); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.6)');
+  ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+  const r = rng(Math.round(t * FPS) + 1); ctx.globalAlpha = .055; ctx.globalCompositeOperation = 'overlay';
+  ctx.drawImage(grain, -r() * 200, -r() * 200, W + 400, H + 400); ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+}
+
+/* ---------- couverture ---------- */
+function renderCover() {
+  const c = { F: F0, g: 1, falling: false, u: 0 };
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.filter = 'none'; background(1, c, -9999);
+  sunBall(540, 1150, 250, 1.3, 1);
+  ctx.fillStyle = C.mist; ctx.font = font(700, 24, MONO); LS('4px'); ctx.fillText('VERTIGE · N°06', 110, 400);
+  ctx.fillStyle = C.ivory; LS('-4px'); ctx.font = font(900, 112); ctx.fillText('LE SOLEIL EST', 104, 530); ctx.fillText('UN BALLON', 104, 645); ctx.fillText('DE FOOT.', 104, 760);
+  LS('-3px'); ctx.font = font(900, 104); ctx.fillText('OÙ EST', 106, 1600); ctx.fillText('LA TERRE ?', 106, 1710); LS('0px');
+  finish(0, null);
+}
+
+window.ready = Promise.all([document.fonts.load('500 20px JBM'), document.fonts.load('700 20px JBM'), document.fonts.load('900 20px "Inter Display"'), document.fonts.load('800 20px "Inter Display"'), document.fonts.load('600 20px "Inter Display"')]).then(() => { draw(0); return true; });
+if (location.search.includes('preview')) { document.body.classList.add('preview'); const s = performance.now(); (function loop() { draw(((performance.now() - s) / 1000) % DURATION); requestAnimationFrame(loop); })(); }
+</script>
+</body>
+</html>

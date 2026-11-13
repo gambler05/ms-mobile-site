@@ -1,0 +1,9 @@
+[
+  {"t": 0.15, "dit": "Le Soleil est un ballon de foot. Où est la Terre ?", "st": "Le Soleil est un ballon de foot.\nOù est la Terre ?"},
+  {"t": 4.75, "dit": "À vingt-quatre mètres. Et elle mesure deux millimètres.", "st": "À 24 mètres.\nEt elle mesure 2 millimètres."},
+  {"t": 9.35, "dit": "Jupiter : une noix, à cent vingt-trois mètres.", "st": "Jupiter : une noix, à 123 mètres."},
+  {"t": 14.15, "dit": "Neptune : à sept cent onze mètres.", "st": "Neptune : à 711 mètres."},
+  {"t": 16.45, "dit": "Et l'étoile la plus proche ?", "st": "Et l'étoile la plus proche ?"},
+  {"t": 23.6, "dit": "À six mille trois cent cinquante kilomètres.", "st": "À 6 350 kilomètres."},
+  {"t": 26.7, "dit": "L'espace porte bien son nom.", "st": "L'espace porte bien son nom."}
+]
