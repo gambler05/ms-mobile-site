@@ -1,0 +1,11 @@
+{
+  "name": "Studio IA",
+  "short_name": "Studio IA",
+  "description": "Génération d'images, analyse d'images en prompts et bibliothèque créative.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#08080c",
+  "theme_color": "#08080c",
+  "lang": "fr",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

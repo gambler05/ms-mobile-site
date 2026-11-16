@@ -127,3 +127,9 @@ doivent réserver lecture et écriture aux comptes authentifiés.
 - **Police système.** Aucune fonte n’est embarquée : le fichier reste léger et libre
   de toute licence. La pile de polices retenue rend de façon très proche sur Windows,
   macOS, iOS et Android.
+
+## Autre projet du dépôt : Studio IA
+
+Le dossier [`studio-ia/`](studio-ia/README.md) contient un projet indépendant : un studio de création
+d'images assisté par IA (texte → image, image → prompt, éditeur de prompts, bibliothèque).
+Il a ses propres dépendances, commandes et tests ; voir [`studio-ia/README.md`](studio-ia/README.md).
