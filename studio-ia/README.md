@@ -20,6 +20,46 @@ Studio de création d'images assisté par IA, entièrement en français, à util
 
 ---
 
+## Installer Studio IA comme un logiciel
+
+Studio IA s'installe comme une application de bureau : une fenêtre dédiée, une icône sur le bureau et
+dans le menu Démarrer (ou le Launchpad). Le navigateur et le terminal ne sont pas nécessaires.
+
+### Option A — Installateur (le plus simple)
+
+1. Sur GitHub, ouvrez l'onglet **Actions** du dépôt, puis la dernière exécution réussie de
+   **« Studio IA — installateurs »**.
+2. Dans **Artifacts**, téléchargez le fichier correspondant à votre système, puis décompressez-le :
+   - **Windows** : `Studio-IA-Windows` → double-cliquez sur `Studio-IA-Installation-….exe`.
+     Windows peut afficher « Windows a protégé votre ordinateur » (application non signée) :
+     cliquez sur **Informations complémentaires › Exécuter quand même**.
+   - **macOS** : `Studio-IA-macOS` → ouvrez le `.dmg` et glissez **Studio IA** dans Applications.
+     Au premier lancement : clic droit sur l'application › **Ouvrir** › **Ouvrir**.
+   - **Linux** : `Studio-IA-Linux` → rendez le fichier `.AppImage` exécutable, puis double-cliquez dessus.
+3. Lancez **Studio IA** depuis l'icône, puis connectez un moteur dans **Paramètres**.
+
+Pour fabriquer les installateurs vous-même : `npm install` puis `npm run desktop:dist`
+(résultat dans `release/`). Chaque système produit son propre installateur.
+
+### Option B — Lanceur à double-clic (sans installateur)
+
+Prérequis : [Node.js](https://nodejs.org) (version LTS). Dans le dossier `studio-ia` :
+
+- **Windows** : double-cliquez sur **`Studio IA.bat`** ;
+- **macOS / Linux** : double-cliquez sur **`Studio IA.command`**.
+
+Le premier lancement installe et compile tout (quelques minutes) ; les suivants ouvrent directement
+la fenêtre. Créez un raccourci de ce fichier sur votre bureau pour le retrouver facilement.
+Depuis un terminal, la commande équivalente est `npm run desktop`.
+
+### Où sont mes données ?
+
+Dans l'application de bureau, la bibliothèque, les images et les réglages (y compris les clés saisies
+dans Paramètres) sont rangés dans le dossier utilisateur :
+Windows `%APPDATA%\Studio IA\data`, macOS `~/Library/Application Support/Studio IA/data`,
+Linux `~/.config/Studio IA/data`. Le menu **Fichier › Ouvrir le dossier des données** y mène directement.
+Vous pouvez aussi y placer un fichier `.env` (un niveau au-dessus de `data`) sur le modèle de `.env.example`.
+
 ## Sommaire
 
 1. [Ce qu'il faut savoir avant de commencer](#1-ce-quil-faut-savoir-avant-de-commencer)
@@ -145,7 +185,9 @@ Matériel : carte graphique NVIDIA 8 Go+ pour SDXL (4–6 Go pour SD 1.5) ou Mac
 |---|---|
 | `npm install` | Installe les dépendances |
 | `npm run build` | Compile l'interface (`web/dist`) et le serveur (`server/dist`) |
-| `npm start` | Lance le studio compilé sur http://127.0.0.1:5174 |
+| `npm start` | Lance le studio compilé sur http://127.0.0.1:5174 (dans le navigateur) |
+| `npm run desktop` | Compile puis ouvre le studio dans sa fenêtre d'application de bureau |
+| `npm run desktop:dist` | Fabrique l'installateur pour le système en cours (dossier `release/`) |
 | `npm run dev` | Mode développement : serveur rechargé à chaud + interface Vite sur http://127.0.0.1:5173 |
 | `npm run doctor` | Diagnostic des moteurs (appels gratuits, aucune génération) |
 | `npm run backup [-- fichier.zip]` | Sauvegarde de la bibliothèque |

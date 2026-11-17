@@ -3,6 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "description": "Studio IA — génération d'images à partir de texte, analyse d'images en prompts, éditeur de prompts et bibliothèque locale.",
+  "author": "Studio IA",
+  "main": "desktop/main.mjs",
   "type": "module",
   "engines": {
     "node": ">=20.19"
@@ -21,7 +23,9 @@
     "test:e2e": "npm run build && playwright test --trace off",
     "backup": "tsx server/src/cli/backup.ts",
     "restore": "tsx server/src/cli/restore.ts",
-    "doctor": "tsx server/src/cli/doctor.ts"
+    "doctor": "tsx server/src/cli/doctor.ts",
+    "desktop": "npm run build && electron .",
+    "desktop:dist": "npm run build && electron-builder --publish never"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.9.0",
@@ -40,6 +44,8 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^5.2.0",
     "concurrently": "^9.2.5",
+    "electron": "^45.3.3",
+    "electron-builder": "^26.18.0",
     "lucide-react": "^1.73.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
@@ -48,5 +54,59 @@
     "typescript": "~5.9.3",
     "vite": "^7.3.8",
     "vitest": "^3.2.7"
-  }
+  },
+  "build": {
+    "appId": "fr.studio-ia.app",
+    "productName": "Studio IA",
+    "copyright": "Studio IA",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**",
+      "server/dist/**",
+      "web/dist/**",
+      "package.json",
+      "!**/*.map"
+    ],
+    "asar": false,
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "icon": "desktop/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Studio IA",
+      "installerLanguages": [
+        "fr_FR"
+      ],
+      "language": "1036",
+      "artifactName": "Studio-IA-Installation-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.graphics-design",
+      "icon": "desktop/icon.png",
+      "artifactName": "Studio-IA-${version}-${arch}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Graphics",
+      "icon": "desktop/icon.png",
+      "artifactName": "Studio-IA-${version}.${ext}",
+      "syncDesktopName": true
+    },
+    "publish": null
+  },
+  "desktopName": "studio-ia.desktop"
 }

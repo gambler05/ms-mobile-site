@@ -1,0 +1,56 @@
+# Fabrique les installateurs de l'application de bureau Studio IA
+# (Windows .exe, macOS .dmg, Linux .AppImage) et les met à disposition
+# dans l'onglet « Actions » de GitHub (section « Artifacts » de chaque exécution).
+name: Studio IA — installateurs
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "studio-ia/**"
+      - ".github/workflows/studio-ia-bureau.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  installateur:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            cible: --win
+            nom: Studio-IA-Windows
+          - os: macos-latest
+            cible: --mac
+            nom: Studio-IA-macOS
+          - os: ubuntu-latest
+            cible: --linux
+            nom: Studio-IA-Linux
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: studio-ia
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: studio-ia/package-lock.json
+      - run: npm ci
+      - run: npm run test:unit
+      - run: npm run build
+      - run: npx electron-builder ${{ matrix.cible }} --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.nom }}
+          path: |
+            studio-ia/release/*.exe
+            studio-ia/release/*.dmg
+            studio-ia/release/*.AppImage
+          if-no-files-found: error
+          retention-days: 30
